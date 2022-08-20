@@ -4,6 +4,8 @@
 #include <Time.h>
 #include <TimeAlarms.h>
 
+#include "filter_nlms.h"
+
 const int LED_PIN = 13;
 //config ports for motor driver
 const int MOTOR_DRIVER_VCC = 37;
@@ -33,6 +35,7 @@ float dBUpper = 0;
 File fspl;
 
 struct dBStats {
+  float curr;
   float sum;
   float avg;
   int count;
@@ -43,11 +46,13 @@ bool motorOn = false;
 // GUItool: begin automatically generated code
 AudioInputI2S            micLeft;          //xy=204.00000762939453,251.00000953674316
 AudioInputI2S2           micRight;         //xy=207.00000381469727,309.00000953674316
-AudioAnalyzeFFT1024      fftRight;      //xy=469.0000114440918,311.00000953674316
-AudioAnalyzeFFT1024      fftLeft;            //xy=471.00001525878906,249.0000123977661
+AudioFilterNLMS          nlms;
+AudioAnalyzeFFT1024      fftLeft;
 AudioAnalyzeFFT1024      fftFinal;            //xy=471.00001525878906,249.0000123977661
-AudioConnection          patchCord1(micLeft, 0, fftLeft, 0);
-AudioConnection          patchCord2(micRight, 1, fftRight, 0);
+AudioConnection          patchCord1(micLeft, 0, nlms, 0);
+AudioConnection          patchCord2(micRight, 1, nlms, 0);
+AudioConnection          patchCord3(nlms, fftFinal);
+AudioConnection          patchCord4(micLeft, fftLeft);
 
 void buzzOn () {
   if (!motorOn) {
@@ -96,7 +101,7 @@ bool readSpl (float * lower, float * upper) {
 
 // Returns the magnitude for a set of fft samples
 // given the upper freq, lower frequncy, N = number fo freq bands, and fft
-float calculate_spl (int fLower, int fUpper, int fs, int N, AudioAnalyzeFFT1024 fft) {
+float calculate_spl (int fLower, int fUpper, int fs, int N, AudioAnalyzeFFT1024* fft) {
   // grab the upper and lower bin numbers
   int k0 = round((fLower * N) / fs);
   int kf = round((fUpper * N) / fs);
@@ -104,13 +109,13 @@ float calculate_spl (int fLower, int fUpper, int fs, int N, AudioAnalyzeFFT1024 
   float spl = 0;
   double fftBuffer[MIC_BUFFER_SIZE];
 
-  if (fft.available()) {
+  if (fft->available()) {
     for (int i = 0; i < MIC_BUFFER_SIZE; i++) {
       // We only want frequencies between k0 and kf
       if (i < k0 || i > kf) {
         fftBuffer[i] = 0;
       } else {
-        fftBuffer[i] = fft.read(i);
+        fftBuffer[i] = fft->read(i);
         magnitude = magnitude + sq(fftBuffer[i]);
       }
     }
@@ -122,67 +127,8 @@ float calculate_spl (int fLower, int fUpper, int fs, int N, AudioAnalyzeFFT1024 
   return spl;
 }
 
-void donlms(double *x, double *d, double *dhat, double *e, double *w, double mu, int N, int xlen)
-{
-
-#ifdef NOTDEFINED
-  // lms(x,d,dhat,e,w,xlen,N,mu)
-  // double    *x;               /* pointer to input data buffer */
-  // double    *d;               /* pointer to desired signal buffer */
-  // double    *w;               /* weight vector */
-  // double    *dhat;            /* estimate of d produced by filter */
-  // double    *e;               /* error */
-  // int        xlen;            /* length of input data buffer */
-  // int        N;               /* filter length */
-  // double     mu;              /* mu = 2 x's the conventional mu */
-#endif
-
-   /* Note: the input data is in a buffer that is actually L+N long */
-   /* so there will be enough data to fill the filter taps as well. */
-   
-   register double s;       /* summer used in filter */
-   register int j,i;        /* loop counters */
-   double *x1;              /* temporary pointer to input data */
-   double *x2;              /* temporary pointer to input data */
-   double *wn,*wn0,*ee;     /* temporary pointer to filter weights */
-   double Em = 1e-20;
-   
-
-/****************************************
- ******** Matlab equivalent code ********
-   for n = N:length(x),
-     % produce filtered output sample
-     dhat(n) = w * x(n:-1:n-(N-1))';
-     % update the filter coefficients
-     e(n) = d(n) - dhat(n);
-     w = w+2*mu*x(n:-1:n-(N-1))*e(n);
-   end
-*****************************************/
-
-   for(i=0; i<N; i++) {
-     Em += x[i] * x[i];
-   }
-
-   for(i=0; i< xlen; i++)
-   {
-     for(wn = w, x1=x+i, j=0,s=0.0; j<N; j++)
-       s += *(wn++) * *(x1--);
-     x1++;
-     Em += x[i] * x[i] - *x1 * *x1;
-     e[i] = d[i] - s;
-     dhat[i] = s;
-	 // the following multiplication can be made more efficient by using frexpf() to extract the exponent of Em, then use ldexpf() to multiply mu*e[i] by 2^(-exp).  The approximation is fine...
-     s = mu * e[i] / Em;
-	 // The following weight update is for a regular nLMS adaptive filter.  For our system we will need to ensure that the weights stay below 2 in magnitude.  If they get bigger than that, just cap them at that value.
-     for(j=0; j<N; j++)
-       w[j] += s * x[i-j];
-   }
-}
-
 void setup() {
   AudioMemory(50);
-  fftLeft.windowFunction(AudioWindowHanning1024);
-  fftRight.windowFunction(AudioWindowHanning1024);
   fftFinal.windowFunction(AudioWindowHanning1024);
 
   // Setup haptic driver & PWM motor
@@ -198,21 +144,28 @@ void setup() {
   readSpl(&dBLower, &dBUpper);
 }
 
+bool actionTimer(time_t timeout_ms) {
+  static time_t stamp = 0;
+  if (millis() - stamp >= timeout_ms) {
+    stamp = millis();
+    return true;
+  }
+  return false;
+}
+
 // copied from the fft example:
 void loop() {
-  // Get raw mic data
-  for (int i=0; i<512; i++) {
-    micLeftBuffer[i] = fftLeft.output[i];
-    micRightBuffer[i] = fftRight.output[i];
-    micDiff[i] = micLeftBuffer[i] - micRightBuffer[i];
-    micSum[i] = micLeftBuffer[i] + micRightBuffer[i];
-  }
-
-  // Run through nlms filter
-  donlms(micDiff, micSum, micNoise, micVoiceOut, aWeight, MU, FREQ_BANDS_N, MIC_BUFFER_SIZE);
 
   // Get spl values for the conversational frequency range
-  dBStat.sum += calculate_spl(FREQ_LOWER_LIMIT_HZ, FREQ_UPPER_LIMIT_HZ, FREQ_SAMPLING_FS_HZ, FREQ_BANDS_N, fftFinal);
+
+  if (actionTimer(2000)) {
+    for (int i = 0; i < 512; i++) {
+      Serial.println(nlms.left[i]);
+    }
+  }
+
+  dBStat.curr = calculate_spl(FREQ_LOWER_LIMIT_HZ, FREQ_UPPER_LIMIT_HZ, FREQ_SAMPLING_FS_HZ, FREQ_BANDS_N, &fftFinal);
+  dBStat.sum += dBStat.curr;
   dBStat.count++;
   dBStat.avg = dBStat.sum / dBStat.count;
 
@@ -220,10 +173,12 @@ void loop() {
   if (dBStat.count >= 96) {
     if (dBStat.avg > dBLower && dBStat.avg < dBUpper && !motorOn) {
             Serial.println(dBStat.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
-      buzzOn(); delay(250); buzzOff();
+      // buzzOn(); delay(250); buzzOff();
     }
     dBStat.sum = 0;
     dBStat.count = 0;
     dBStat.avg = 0;
   }
+
+  //Serial.println(dBStat.curr, 3);
 }
