@@ -61,6 +61,7 @@ void do_nlms(double *x, double *d, double *dhat, double *e, double *w, double mu
 }
 
 void apply_fft(uint16_t* output, int16_t* buffer, arm_cfft_radix4_instance_q15 fft_inst) {
+  //wrong arm cfft function i think
     arm_cfft_radix4_q15(&fft_inst, buffer);
     for (int i=0; i < 512; i++) {
         uint32_t tmp = *((uint32_t *)buffer + i); // real & imag
