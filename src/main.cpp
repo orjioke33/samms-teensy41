@@ -178,31 +178,31 @@ void continueRecording() {
     //arm_cfft_radix2_f32(&fft_inst, buffer);
     arm_cfft_f32(&fft_inst, buffer, 0, 1);
 
-    //scale?
-    for (int i=0; i < 512; i++) {
-        float32_t tmp = *((float32_t *)buffer + i); // real & imag
-        float32_t magsq = multiply_16tx16t_add_16bx16b(tmp, tmp);
-        output[i] = sqrt_uint32_approx(magsq) * (1.0f / 16384.0f);
-    }
+    //scale and calculate complex magnitude squared
+    //for (int i=0; i < 512; i++) {
+    //    float32_t tmp = *((float32_t *)buffer + i); // real & imag
+    //    float32_t magsq = multiply_16tx16t_add_16bx16b(tmp, tmp);
+    //    output[i] = sqrt_uint32_approx(magsq) * (1.0f / 16384.0f);
+    //}
 
+    arm_cmplx_mag_squared_f32(buffer,output,512);
     //BP and aweight filtering
     magnitude = 0;
     dB_holder = 0;
       
     for (int i=0; i<512; i++) {
-      v[i] = output[i] * aWeight[i] * bp_weight[i];
+      v[i] = output[i] * aWeight[i] * bp_weight[i] * 1.0f/262144.0f;
       magnitude = magnitude + sq(v[i]);
     }
-    
-    Serial.println(magnitude, 6);
 
     //get spl and buzz?
-
+  
     dB_holder = log10f(magnitude) * 20  + 125.05;
     dBStat.sum += dB_holder;
     dBStat.count++;
     dBStat.avg = dBStat.sum / dBStat.count;
-
+    Serial.println(dBStat.avg, 6);
+    /*
     // Check for buzz every 96 dB samples
     if (dBStat.count >= 96) {
       if (dBStat.avg > dBLower && dBStat.avg < dBUpper && !motorOn) {
@@ -213,7 +213,7 @@ void continueRecording() {
       dBStat.count = 0;
       dBStat.avg = 0;
       }
-
+*/
   }
 }
 
