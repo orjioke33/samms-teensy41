@@ -64,8 +64,8 @@ void apply_fft(float32_t* output, float32_t* buffer, arm_cfft_radix4_instance_f3
   //wrong arm cfft function i think
     arm_cfft_radix4_f32(&fft_inst, buffer);
     for (int i=0; i < 512; i++) {
-        uint32_t tmp = *((uint32_t *)buffer + i); // real & imag
-        uint32_t magsq = multiply_16tx16t_add_16bx16b(tmp, tmp);
+        float32_t tmp = *((float32_t *)buffer + i); // real & imag
+        float32_t magsq = multiply_16tx16t_add_16bx16b(tmp, tmp);
         output[i] = sqrt_uint32_approx(magsq) * (1.0f / 16384.0f);
     }
 }
