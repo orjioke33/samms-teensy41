@@ -60,9 +60,9 @@ void do_nlms(double *x, double *d, double *dhat, double *e, double *w, double mu
    }
 }
 
-void apply_fft(uint16_t* output, int16_t* buffer, arm_cfft_radix4_instance_q15 fft_inst) {
+void apply_fft(float32_t* output, float32_t* buffer, arm_cfft_radix4_instance_f32 fft_inst) {
   //wrong arm cfft function i think
-    arm_cfft_radix4_q15(&fft_inst, buffer);
+    arm_cfft_radix4_f32(&fft_inst, buffer);
     for (int i=0; i < 512; i++) {
         uint32_t tmp = *((uint32_t *)buffer + i); // real & imag
         uint32_t magsq = multiply_16tx16t_add_16bx16b(tmp, tmp);
@@ -72,11 +72,11 @@ void apply_fft(uint16_t* output, int16_t* buffer, arm_cfft_radix4_instance_q15 f
 
 void copy_to_fft_buffer(void *destination, const void *source)
 {
-	const uint16_t *src = (const uint16_t *)source;
-	uint32_t *dst = (uint32_t *)destination;
+	const float32_t *src = (const float32_t *)source;
+	float32_t *dst = (float32_t *)destination;
 
-	for (int i=0; i < 1024; i++) {
-		*dst++ = *src++;  // real sample plus a zero for imaginary
+	for (int i=0; i < 1024; i+=2) {
+		dst[i] = (float32_t) src[i];
 	}
 }
 
