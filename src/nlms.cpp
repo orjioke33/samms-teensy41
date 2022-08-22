@@ -40,23 +40,33 @@ void do_nlms(double *x, double *d, double *dhat, double *e, double *w, double mu
    end
 *****************************************/
 
-   for(i=0; i<N; i++) {
-     Em += x[i] * x[i];
-   }
-
-   for(i=0; i< xlen; i++)
+//   for(i=xlen-N; i<xlen; i++) {
+//     Em += x[i] * x[i];
+//   }
+  //filter (The second half of the array has the new values to be filtered)
+   for(i=0; i < xlen; i++)
    {
-     for(wn = w, x1=x+i, j=0,s=0.0; j<N; j++)
+     for(wn = w, x1=x+i+xlen, j=0,s=0.0, Em=1e-6; j<N; j++){
+       Em += *x1 * *x1;
        s += *(wn++) * *(x1--);
-     x1++;
-     Em += x[i] * x[i] - *x1 * *x1;
-     e[i] = d[i] - s;
+     }
+     
+ //    Em += x[i+xlen] * x[i+xlen] - *x1 * *x1;
+     e[i] = d[i+xlen] - s;
      dhat[i] = s;
 	 // the following multiplication can be made more efficient by using frexpf() to extract the exponent of Em, then use ldexpf() to multiply mu*e[i] by 2^(-exp).  The approximation is fine...
      s = mu * e[i] / Em;
+
 	 // The following weight update is for a regular nLMS adaptive filter.  For our system we will need to ensure that the weights stay below 2 in magnitude.  If they get bigger than that, just cap them at that value.
-     for(j=0; j<N; j++)
-       w[j] += s * x[i-j];
+     for(j=0; j<N; j++){
+        w[j] += s * x[i-j+xlen];
+        w[j] *= .999999;
+        if(w[j]>2.0)
+          w[j]=2.0;
+        if(w[j]<-2.0)
+          w[j]=-2.0;
+     }
+       
    }
 }
 
