@@ -19,6 +19,14 @@ AudioRecordQueue         queue2;         //xy=389,145
 AudioConnection          patchCord1(i2sL, 0, queue1, 0); // Left Channel
 AudioConnection          patchCord2(i2sR, 0, queue2, 0); // Right Channel
 
+const int LED_PIN = 13;
+//config ports for motor driver
+const int MOTOR_DRIVER_VCC = 37;
+const int MOTOR_DRIVER_PH = 38;
+//PWM port
+const int MOTOR_DRIVER_EN = 29;
+
+
 #define BUFFER_SIZE_MIC         512
 
 // nlms
@@ -64,6 +72,62 @@ int mode = 0;  // 0=stopped, 1=recording, 2=playing
 
 // The file where data is recorded
 File frec;
+struct dBStats {
+  float sum;
+  float avg;
+  int count;
+} dBStat;
+bool motorOn = false;
+
+// Spl file values
+float dBLower = 0;
+float dBUpper = 0;
+
+void buzzOn () {
+  if (!motorOn) {
+    Serial.println("BUZZING!");
+    analogWrite(MOTOR_DRIVER_EN, 0);
+    analogWrite(MOTOR_DRIVER_EN, 70);
+    motorOn = true;
+  }
+}
+
+void buzzOff () {
+  if (motorOn) {
+    Serial.println("OFFF!");
+    analogWrite(MOTOR_DRIVER_EN, 0);
+    motorOn = false;
+  }
+}
+
+bool readSpl (float * lower, float * upper) {
+  delay(5000);
+
+  if (!(SD.begin(BUILTIN_SDCARD))) {
+    // stop here if no SD card, but print a message
+    while (1) {
+      Serial.println("Unable to access the SD card");
+      delay(500);
+    }
+  }
+
+  frec = SD.open("spl.txt", FILE_READ);
+  if (!frec) {
+    Serial.println("Error opening spl txt file.");
+    *lower = -1; *upper = -1;
+    return false;
+  }
+
+  *lower = frec.parseFloat();
+  *upper = frec.parseFloat();
+  Serial.println("Lower and upper threshold respectively (dB)");
+  Serial.println(*lower, 3);
+  Serial.println(*upper, 3);
+  delay(5000);
+  return true;
+
+}
+
 
 void startRecording() {
   Serial.println("StartRecording");
@@ -134,6 +198,22 @@ void continueRecording() {
 
     //get spl and buzz?
 
+    dB_holder = log10f(magnitude) * 20  + 125.05;
+    dBStat.sum += dB_holder;
+    dBStat.count++;
+    dBStat.avg = dBStat.sum / dBStat.count;
+
+    // Check for buzz every 96 dB samples
+    if (dBStat.count >= 96) {
+      if (dBStat.avg > dBLower && dBStat.avg < dBUpper && !motorOn) {
+          Serial.println(dBStat.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
+          buzzOn(); delay(250); buzzOff();
+      }
+      dBStat.sum = 0;
+      dBStat.count = 0;
+      dBStat.avg = 0;
+      }
+
   }
 }
 
@@ -184,6 +264,18 @@ void setup() {
       delay(500);
     }
   }
+
+  // Setup haptic driver & PWM motor
+  pinMode(MOTOR_DRIVER_VCC, OUTPUT);
+  pinMode(MOTOR_DRIVER_PH, OUTPUT);
+  pinMode(MOTOR_DRIVER_EN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+
+  digitalWrite(MOTOR_DRIVER_VCC, HIGH);
+  digitalWrite(MOTOR_DRIVER_PH, HIGH);
+
+  dBStat.avg = 0, dBStat.sum = 0, dBStat.sum = 0;
+  readSpl(&dBLower, &dBUpper);
 
   startRecording();
 }
