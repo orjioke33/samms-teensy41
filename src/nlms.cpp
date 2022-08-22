@@ -72,11 +72,12 @@ void apply_fft(float32_t* output, float32_t* buffer, arm_cfft_radix4_instance_f3
 
 void copy_to_fft_buffer(void *destination, const void *source)
 {
-	const float32_t *src = (const float32_t *)source;
+	const double *src = (const double *)source;
 	float32_t *dst = (float32_t *)destination;
 
-	for (int i=0; i < 1024; i+=2) {
-		dst[i] = (float32_t) src[i];
+	for (int i=0; i < 512; i++) {
+		dst[2*i] = (float32_t) src[i];
+    dst[2*i+1] = 0.0;
 	}
 }
 
