@@ -7,6 +7,9 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+
+#include "board.h"
+#include "file_system.h"
 #include "nlms.h"
 #include "arm_math.h"
 #include "sqrt_integer.h"
@@ -99,35 +102,6 @@ void buzzOff () {
     motorOn = false;
   }
 }
-
-bool readSpl (float * lower, float * upper) {
-  delay(5000);
-
-  if (!(SD.begin(BUILTIN_SDCARD))) {
-    // stop here if no SD card, but print a message
-    while (1) {
-      Serial.println("Unable to access the SD card");
-      delay(500);
-    }
-  }
-
-  frec = SD.open("spl.txt", FILE_READ);
-  if (!frec) {
-    Serial.println("Error opening spl txt file.");
-    *lower = -1; *upper = -1;
-    return false;
-  }
-
-  *lower = frec.parseFloat();
-  *upper = frec.parseFloat();
-  Serial.println("Lower and upper threshold respectively (dB)");
-  Serial.println(*lower, 3);
-  Serial.println(*upper, 3);
-  delay(5000);
-  return true;
-
-}
-
 
 void startRecording() {
   Serial.println("StartRecording");
@@ -264,15 +238,8 @@ void setup() {
     }
   }
 
-  // Initialize the SD card
-  SPI.setMOSI(SDCARD_MOSI_PIN);
-  SPI.setSCK(SDCARD_SCK_PIN);
-  if (!(SD.begin(SDCARD_CS_PIN))) {
-    // stop here if no SD card, but print a message
-    while (1) {
-      Serial.println("Unable to access the SD card");
-      delay(500);
-    }
+  // Do not continue without an SD card
+  while (read_spl_limits_from_file() != ERR_SAMMS_OK) {
   }
 
   // Setup haptic driver & PWM motor
@@ -285,7 +252,6 @@ void setup() {
   digitalWrite(MOTOR_DRIVER_PH, HIGH);
 
   dBStat.avg = 0, dBStat.sum = 0, dBStat.sum = 0;
-  readSpl(&dBLower, &dBUpper);
 
   startRecording();
 }
