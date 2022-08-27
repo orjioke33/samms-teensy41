@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <SD.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_ADXL343.h>
 
 // ERRORS
 #define ERR_SAMMS_OK                 0
@@ -19,6 +21,7 @@ typedef struct {
 // System configuration values
 typedef struct {
     spl_user_config_t splUserConfig;
+    Adafruit_ADXL343  accel;
 } samms_sys_config_t;
 
 // Decibel statistics from the mic

@@ -9,6 +9,7 @@
 #include <SerialFlash.h>
 
 #include "board.h"
+#include "accel.h"
 #include "file_system.h"
 #include "nlms.h"
 #include "arm_math.h"
@@ -237,6 +238,19 @@ void setup() {
       bp_weight[i] = 0.0;
     }
   }
+
+  delay(5000);
+  while (!sysConfig.accel.begin()) {
+    static int a = 0;
+    if (a == 0) {
+      Serial.println("adxl343 not detected");
+      a++;
+    }
+  }
+
+  Serial.println("ADXL343 DETECTED!");
+
+  delay(5000);
 
   // Do not continue without an SD card
   while (read_spl_limits_from_file() != ERR_SAMMS_OK) {

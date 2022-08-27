@@ -8,6 +8,7 @@ samms_sys_config_t sysConfig = {
         .splLowerdBA = -1,
         .splUpperdBA = -1,
     },
+    .accel = Adafruit_ADXL343(0),
 };
 
 // sysData
