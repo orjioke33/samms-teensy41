@@ -6,10 +6,17 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL343.h>
 
+// PINOUTS
+#define TEENSY_LED_PIN              13
+#define TEENSY_MOTOR_DRIVER_VCC     37
+#define TEENSY_MOTOR_DRIVER_PH      38
+#define TEENSY_MOTOR_DRIVER_EN      29         
+
 // ERRORS
 #define ERR_SAMMS_OK                 0
 #define ERR_FILE_SYS_SD_FAIL        -1
 #define ERR_FILE_SYS_RW_FAIL        -2
+#define ERR_ACCEL_BEGIN_FAIL        -1
 
 // Spl file and limits
 typedef struct {
@@ -44,5 +51,7 @@ typedef struct {
 extern samms_sys_config_t   sysConfig;
 extern samms_sys_data_t     sysData;
 extern samms_sys_status_t   sysStatus;
+
+int8_t samms_setup(void);
 
 #endif

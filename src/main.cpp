@@ -23,14 +23,6 @@ AudioRecordQueue         queue2;         //xy=389,145
 AudioConnection          patchCord1(i2sL, 0, queue1, 0); // Left Channel
 AudioConnection          patchCord2(i2sR, 0, queue2, 0); // Right Channel
 
-const int LED_PIN = 13;
-//config ports for motor driver
-const int MOTOR_DRIVER_VCC = 37;
-const int MOTOR_DRIVER_PH = 38;
-//PWM port
-const int MOTOR_DRIVER_EN = 29;
-
-
 #define BUFFER_SIZE_MIC         512
 
 // nlms
@@ -90,8 +82,8 @@ float dBUpper = 0;
 void buzzOn () {
   if (!motorOn) {
     Serial.println("BUZZING!");
-    analogWrite(MOTOR_DRIVER_EN, 0);
-    analogWrite(MOTOR_DRIVER_EN, 70);
+    analogWrite(TEENSY_MOTOR_DRIVER_EN, 0);
+    analogWrite(TEENSY_MOTOR_DRIVER_EN, 70);
     motorOn = true;
   }
 }
@@ -99,7 +91,7 @@ void buzzOn () {
 void buzzOff () {
   if (motorOn) {
     Serial.println("OFFF!");
-    analogWrite(MOTOR_DRIVER_EN, 0);
+    analogWrite(TEENSY_MOTOR_DRIVER_EN, 0);
     motorOn = false;
   }
 }
@@ -240,30 +232,10 @@ void setup() {
   }
 
   delay(5000);
-  while (!sysConfig.accel.begin()) {
-    static int a = 0;
-    if (a == 0) {
-      Serial.println("adxl343 not detected");
-      a++;
-    }
+  while (samms_setup() != ERR_SAMMS_OK) {
+      delay(5000); // Check every 5 seconds.
   }
-
-  Serial.println("ADXL343 DETECTED!");
-
-  delay(5000);
-
-  // Do not continue without an SD card
-  while (read_spl_limits_from_file() != ERR_SAMMS_OK) {
-  }
-
-  // Setup haptic driver & PWM motor
-  pinMode(MOTOR_DRIVER_VCC, OUTPUT);
-  pinMode(MOTOR_DRIVER_PH, OUTPUT);
-  pinMode(MOTOR_DRIVER_EN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
-
-  digitalWrite(MOTOR_DRIVER_VCC, HIGH);
-  digitalWrite(MOTOR_DRIVER_PH, HIGH);
+  delay(10000);
 
   dBStat.avg = 0, dBStat.sum = 0, dBStat.sum = 0;
 

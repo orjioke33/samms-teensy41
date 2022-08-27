@@ -6,7 +6,27 @@
 #include "board.h"
 #include "accel.h"
 
-void displayAccelDataRate(void)
+int8_t setup_accel(void) {
+    int8_t err = ERR_SAMMS_OK;
+
+    // Detect the accelerometer
+    if (!sysConfig.accel.begin()) {
+        err = ERR_ACCEL_BEGIN_FAIL;
+        Serial.println("Accel failed to begin.");
+        goto quit;
+    }
+
+    // Set specifications
+    sysConfig.accel.setRange(ADXL343_RANGE_4_G);
+    sysConfig.accel.setDataRate(ADXL3XX_DATARATE_800_HZ);
+    display_accel_data_rate();
+    display_accel_range();
+
+quit:
+    return err;
+}
+
+void display_accel_data_rate(void)
 {
   Serial.print  ("Data Rate:    ");
 
@@ -67,7 +87,7 @@ void displayAccelDataRate(void)
   Serial.println(" Hz");
 }
 
-void displayAccelRange(void)
+void display_accel_range(void)
 {
   Serial.print  ("Range:         +/- ");
 

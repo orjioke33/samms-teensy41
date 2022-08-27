@@ -1,7 +1,10 @@
 #ifndef accel_h_
 #define accel_h
 
-void displayAccelDataRate(void);
-void displayAccelRange(void);
+#include <Arduino.h>
+
+int8_t setup_accel(void);
+void display_accel_data_rate(void);
+void display_accel_range(void);
 
 #endif
