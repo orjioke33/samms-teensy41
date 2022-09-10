@@ -35,26 +35,26 @@ File frecz;
 
 void startRecording() {
   Serial.println("StartRecording");
- if (SD.exists("ACCELX.txt")) {
-    SD.remove("ACCELX.txt");
+ if (SD.exists("ACCELX__SilentSpeakQuiet2.txt")) {
+    SD.remove("ACCELX__SilentSpeakQuiet2.txt");
   }
-  frecx = SD.open("ACCELX.txt", FILE_WRITE);
+  frecx = SD.open("ACCELX__SilentSpeakQuiet2.txt", FILE_WRITE);
   if (frecx) {
     Serial.println("File Open X");
   }
 
-  if (SD.exists("ACCELY.txt")) {
-    SD.remove("ACCELY.txt");
+  if (SD.exists("ACCELY_SilentSpeakQuiet2.txt")) {
+    SD.remove("ACCELY__SilentSpeakQuiet2.txt");
   }
-  frecy = SD.open("ACCELY.txt", FILE_WRITE);
+  frecy = SD.open("ACCELY__SilentSpeakQuiet2.txt", FILE_WRITE);
   if (frecy) {
     Serial.println("File Open Y");
   }
 
-  if (SD.exists("ACCELZ.txt")) {
-    SD.remove("ACCELZ.txt");
+  if (SD.exists("ACCELZ__SilentSpeakQuiet2.txt")) {
+    SD.remove("ACCELZ__SilentSpeakQuiet2.txt");
   }
-  frecz = SD.open("ACCELZ.txt", FILE_WRITE);
+  frecz = SD.open("ACCELZ__SilentSpeakQuiet2.txt", FILE_WRITE);
   if (frecz) {
     Serial.println("File Open Z");
   }
@@ -86,8 +86,8 @@ void continueRecording() {
       Serial.print("SD write, us = ");
       Serial.println(usec);
       frecx.write(accelXBuffer, sizeof(int16_t) * 512);
-      frecz.write(accelYBuffer, sizeof(int16_t) * 512);
-      frecy.write(accelZBuffer, sizeof(int16_t) * 512);
+      frecy.write(accelYBuffer, sizeof(int16_t) * 512);
+      frecz.write(accelZBuffer, sizeof(int16_t) * 512);
       Serial.println("Wrote x y z.");
     } else {
       indx++;
@@ -111,14 +111,24 @@ void setup() {
   while (samms_setup() != ERR_SAMMS_OK) {
       delay(5000); // Check every 5 seconds.
   }
-  delay(5000);
+
+  Serial.println(5);
+  delay(1000);
+  Serial.println(4);
+  delay(1000);
+  Serial.println(3);
+  delay(1000);
+  Serial.println(2);
+  delay(1000);
+  Serial.println(1);
+  delay(1000);
 
   startRecording();
 }
 
 
 void loop() {
-  if (millis() > 20000 && mode == 1) {
+  if (millis() > 40000 && mode == 1) {
     stopRecording();
   }
   else {
