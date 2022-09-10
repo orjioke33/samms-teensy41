@@ -38,9 +38,18 @@ typedef struct {
   int count;
 } decibel_stats_t;
 
+// Accelerometer data
+typedef struct {
+    int16_t xRaw[512];
+    int16_t yRaw[512];
+    int16_t zRaw[512];
+    sensors_event_t event;
+} accel_data_t;
+
 // System data
 typedef struct {
     decibel_stats_t dBStats;
+    accel_data_t accelData;
 } samms_sys_data_t;
 
 // System status
