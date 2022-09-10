@@ -46,5 +46,5 @@ void setup() {
 
 
 void loop() {
-
+  get_and_filter_raw_accel_data();
 }

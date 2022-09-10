@@ -111,3 +111,57 @@ void display_accel_range(void)
   }
   Serial.println(" g");
 }
+
+// TODO: do all 3 axes in one for loop
+// Maybe copy these values to new buffers so we can
+// still sample while doing filtering / testing for
+// speech
+static void do_accel_median_filter (int16_t * buf) {
+  // value 1, 2, 3
+  int16_t m1, m2, m3;
+
+  for (int k = 0; k < DEFAULT_ACCEL_BUFFER_SIZE; k++) {
+    int k1 = max(1, k - 1);
+    int k2 = min(DEFAULT_ACCEL_BUFFER_SIZE - 2, k + 1);
+    m1 = buf[k];
+    m2 = buf[k1];
+    m3 = buf[k2];
+
+    // Replace the curr value with the median of itself
+    // and its neighbors
+    if ((m1 <= m2 && m1 >= m3) || (m1 >= m2 && m1 <= m3)) {
+      buf[k] = m1;
+    } else if ((m2 <= m1 && m2 >= m3) || (m2 >= m1 && m2 <= m3)) {
+      buf[k] = m2;
+    } else if ((m3 <= m2 && m3 >= m1) || (m3 >= m2 && m3 <= m1)) {
+      buf[k] = m3;
+    }
+  }
+}
+
+// Save x y z data into buffers
+// Returns 0 if data buffer isn't full
+// Returns 1 if data buffers are full
+// Returns other value for an error
+int8_t get_and_filter_raw_accel_data (void) {
+  int8_t buffersFull = 0;
+  static int indx = 0;
+
+  if (sysConfig.accel.getEvent(&sysData.accelData.event)) {
+    sysConfig.accel.getXYZ(sysData.accelData.xRaw[indx], sysData.accelData.yRaw[indx], sysData.accelData.zRaw[indx]);
+    if (indx > 511) {
+      // Buffers are full, so we can filter
+      do_accel_median_filter(sysData.accelData.xRaw);
+      do_accel_median_filter(sysData.accelData.yRaw);
+      do_accel_median_filter(sysData.accelData.zRaw);
+      // Reset
+      indx = 0;
+      buffersFull = 1;
+    } else {
+      indx++;
+      buffersFull = 0;
+    }
+  }
+
+  return buffersFull;
+}

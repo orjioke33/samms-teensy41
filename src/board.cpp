@@ -53,6 +53,5 @@ int8_t samms_setup(void) {
         Serial.println("Accelerometer specifications set.");
     }
 
-quit:
     return err;
 }

@@ -18,6 +18,8 @@
 #define ERR_FILE_SYS_RW_FAIL        -2
 #define ERR_ACCEL_BEGIN_FAIL        -1
 
+#define DEFAULT_ACCEL_BUFFER_SIZE   512
+
 // Spl file and limits
 typedef struct {
     char fileName[32];
@@ -40,9 +42,9 @@ typedef struct {
 
 // Accelerometer data
 typedef struct {
-    int16_t xRaw[512];
-    int16_t yRaw[512];
-    int16_t zRaw[512];
+    int16_t xRaw[DEFAULT_ACCEL_BUFFER_SIZE];
+    int16_t yRaw[DEFAULT_ACCEL_BUFFER_SIZE];
+    int16_t zRaw[DEFAULT_ACCEL_BUFFER_SIZE];
     sensors_event_t event;
 } accel_data_t;
 
