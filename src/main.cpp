@@ -7,6 +7,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <TeensyThreads.h>
 
 #include "board.h"
 #include "accel.h"
@@ -22,15 +23,6 @@ AudioRecordQueue         queue1;         //xy=360,62
 AudioRecordQueue         queue2;         //xy=389,145
 AudioConnection          patchCord1(i2sL, 0, queue1, 0); // Left Channel
 AudioConnection          patchCord2(i2sR, 0, queue2, 0); // Right Channel
-
-bool actionTimer(time_t timeout_ms) {
-  static time_t stamp = 0;
-  if (millis() - stamp >= timeout_ms) {
-    stamp = millis();
-    return true;
-  }
-  return false;
-}
 
 void setup() {
   // record queue uses this memory

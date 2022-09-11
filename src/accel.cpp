@@ -139,6 +139,30 @@ static void do_accel_median_filter (int16_t * buf) {
   }
 }
 
+//TODO: Test
+static void do_high_pass_filter (int16_t * buf) {
+  static int16_t oldVal = 0;
+
+  buf[0] = buf[0] - oldVal;
+  for (int i = 0; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
+    buf[i] = buf[i] - buf[i - 1];
+  }
+
+  oldVal = buf[DEFAULT_ACCEL_BUFFER_SIZE - 1];
+}
+
+static void filter_accel_raw_data (void) {
+  // Median filters
+  do_accel_median_filter(sysData.accelData.xRaw);
+  do_accel_median_filter(sysData.accelData.yRaw);
+  do_accel_median_filter(sysData.accelData.zRaw);
+
+  // High pass filters
+  do_high_pass_filter(sysData.accelData.xRaw);
+  do_high_pass_filter(sysData.accelData.yRaw);
+  do_high_pass_filter(sysData.accelData.zRaw);
+}
+
 // Save x y z data into buffers
 // Returns 0 if data buffer isn't full
 // Returns 1 if data buffers are full
@@ -151,9 +175,9 @@ int8_t get_and_filter_raw_accel_data (void) {
     sysConfig.accel.getXYZ(sysData.accelData.xRaw[indx], sysData.accelData.yRaw[indx], sysData.accelData.zRaw[indx]);
     if (indx > 511) {
       // Buffers are full, so we can filter
-      do_accel_median_filter(sysData.accelData.xRaw);
-      do_accel_median_filter(sysData.accelData.yRaw);
-      do_accel_median_filter(sysData.accelData.zRaw);
+      // Then store the z in a copy for speech detection
+      filter_accel_raw_data();
+      memcpy(sysData.accelData.zCopy, sysData.accelData.zRaw, sizeof(sysData.accelData.zRaw));
       // Reset
       indx = 0;
       buffersFull = 1;
@@ -164,4 +188,21 @@ int8_t get_and_filter_raw_accel_data (void) {
   }
 
   return buffersFull;
+}
+
+// TODO: Fully implement
+static void get_accel_z_average (void) {
+  // Square the z data
+  for (int i = 0; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
+    sysData.accelData.zCopy[i] = sysData.accelData.zCopy[i] * sysData.accelData.zCopy[i];
+  }
+}
+
+// TODO: Fully implement
+bool detect_accel_speech (void) {
+  // If the raw data has been filtered, then
+  // we can start detect speech
+  if (get_and_filter_raw_accel_data() == 1) {
+    get_accel_z_average();
+  }
 }
