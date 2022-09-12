@@ -16,13 +16,8 @@
 #include "arm_math.h"
 #include "sqrt_integer.h"
 
-// i2s1 and i2s2 are already wired for Teensy boards
-AudioInputI2S            i2sL;           //xy=168,145
-AudioInputI2S2           i2sR;           //xy=168,145
-AudioRecordQueue         queue1;         //xy=360,62
-AudioRecordQueue         queue2;         //xy=389,145
-AudioConnection          patchCord1(i2sL, 0, queue1, 0); // Left Channel
-AudioConnection          patchCord2(i2sR, 0, queue2, 0); // Right Channel
+AudioConnection          patchCord1(sysConfig.mic.i2sL, 0, sysConfig.mic.queue1, 0); // Left Channel
+AudioConnection          patchCord2(sysConfig.mic.i2sR, 0, sysConfig.mic.queue2, 0); // Right Channel
 
 void setup() {
   // record queue uses this memory
@@ -37,11 +32,13 @@ void setup() {
       delay(5000); // Check every 5 seconds.
   }
 
-  Serial.println("SAMMS Setup succeeded.");
+  Serial.println("SAMMS Setup succeeded. Starting mic sampling...");
+  sysConfig.mic.queue1.begin();
+  sysConfig.mic.queue2.begin();
   delay(5000);
   // Thread function, thread arguments, stack size in bytes
   threads.addThread(accel_thread, 0, 8192);
-  Serial.println("Starting detection...");
+  Serial.println("Starting accel sampling...");
 }
 
 

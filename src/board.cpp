@@ -1,3 +1,4 @@
+#include <Audio.h>
 #include "board.h"
 #include "file_system.h"
 #include "accel.h"

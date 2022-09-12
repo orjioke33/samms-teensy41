@@ -2,6 +2,7 @@
 #define board_h_
 
 #include <Arduino.h>
+#include <Audio.h>
 #include <SD.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL343.h>
@@ -27,10 +28,18 @@ typedef struct {
     float splUpperdBA;
 } spl_user_config_t;
 
+typedef struct {
+    AudioInputI2S            i2sL;           // left mic
+    AudioInputI2S2           i2sR;           // right mic
+    AudioRecordQueue         queue1;         // left mic raw buf
+    AudioRecordQueue         queue2;         // right mic raw buf
+} samms_mic_config_t;
+
 // System configuration values
 typedef struct {
     spl_user_config_t splUserConfig;
     Adafruit_ADXL343  accel;
+    samms_mic_config_t mic;
 } samms_sys_config_t;
 
 // Decibel statistics from the mic
