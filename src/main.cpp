@@ -31,12 +31,24 @@ void setup() {
 
   // setup driver, motor, sd card
   // and accelerometer
+  delay(8000);
+  Serial.println("Setting up SAMMS...");
   while (samms_setup() != ERR_SAMMS_OK) {
       delay(5000); // Check every 5 seconds.
   }
+
+  Serial.println("SAMMS Setup succeeded.");
+  delay(5000);
+  // Thread function, thread arguments, stack size in bytes
+  threads.addThread(accel_thread, 0, 8192);
+  Serial.println("Starting detection...");
 }
 
 
 void loop() {
-  get_and_filter_raw_accel_data();
+  static int64_t x = 0;
+  if (millis() - x > 10000) {
+    x += 10000;
+    Serial.println("10s passed");
+  }
 }

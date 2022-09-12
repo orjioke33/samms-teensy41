@@ -58,6 +58,7 @@ typedef struct {
 // System status
 typedef struct {
     bool isMotorOn;
+    bool isSpeechDetected;
 } samms_sys_status_t;
 
 extern samms_sys_config_t   sysConfig;

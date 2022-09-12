@@ -2,6 +2,7 @@
 #include <SerialFlash.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL343.h>
+#include <TeensyThreads.h>
 
 #include "board.h"
 #include "accel.h"
@@ -116,67 +117,90 @@ void display_accel_range(void)
 // Maybe copy these values to new buffers so we can
 // still sample while doing filtering / testing for
 // speech
-static void do_accel_median_filter (int16_t * buf) {
+static void do_accel_median_filter (int16_t * xBuf, int16_t * yBuf, int16_t * zBuf) {
   // value 1, 2, 3
-  int16_t m1, m2, m3;
+  int16_t x1, x2, x3;
+  int16_t y1, y2, y3;
+  int16_t z1, z2, z3;
 
   for (int k = 0; k < DEFAULT_ACCEL_BUFFER_SIZE; k++) {
     int k1 = max(1, k - 1);
     int k2 = min(DEFAULT_ACCEL_BUFFER_SIZE - 2, k + 1);
-    m1 = buf[k];
-    m2 = buf[k1];
-    m3 = buf[k2];
+    x1 = xBuf[k]; x2 = xBuf[k1]; x3 = xBuf[k2];
+    y1 = yBuf[k]; y2 = yBuf[k1]; y3 = yBuf[k2];
+    z1 = zBuf[k]; z2 = zBuf[k1]; z3 = zBuf[k2];
 
     // Replace the curr value with the median of itself
     // and its neighbors
-    if ((m1 <= m2 && m1 >= m3) || (m1 >= m2 && m1 <= m3)) {
-      buf[k] = m1;
-    } else if ((m2 <= m1 && m2 >= m3) || (m2 >= m1 && m2 <= m3)) {
-      buf[k] = m2;
-    } else if ((m3 <= m2 && m3 >= m1) || (m3 >= m2 && m3 <= m1)) {
-      buf[k] = m3;
+    // X axis
+    if ((x1 <= x2 && x1 >= x3) || (x1 >= x2 && x1 <= x3)) {
+      xBuf[k] = x1;
+    } else if ((x2 <= x1 && x2 >= x3) || (x2 >= x1 && x2 <= x3)) {
+      xBuf[k] = x2;
+    } else if ((x3 <= x2 && x3 >= x1) || (x3 >= x2 && x3 <= x1)) {
+      xBuf[k] = x3;
+    }
+
+    // Y axis
+    if ((y1 <= y2 && y1 >= y3) || (y1 >= y2 && y1 <= y3)) {
+      yBuf[k] = y1;
+    } else if ((y2 <= y1 && y2 >= y3) || (y2 >= y1 && y2 <= y3)) {
+      yBuf[k] = y2;
+    } else if ((y3 <= y2 && y3 >= y1) || (y3 >= y2 && y3 <= y1)) {
+      yBuf[k] = y3;
+    }
+
+    // Z axis
+    if ((z1 <= z2 && z1 >= z3) || (z1 >= z2 && z1 <= z3)) {
+      zBuf[k] = z1;
+    } else if ((z2 <= z1 && z2 >= z3) || (z2 >= z1 && z2 <= z3)) {
+      zBuf[k] = z2;
+    } else if ((z3 <= z2 && z3 >= z1) || (z3 >= z2 && z3 <= z1)) {
+      zBuf[k] = z3;
     }
   }
 }
 
 //TODO: Test
-static void do_high_pass_filter (int16_t * buf) {
-  static int16_t oldVal = 0;
+//ERROR: oldVal will use the previous value of
+// a different axis
+static void do_high_pass_filter (int16_t * xBuf, int16_t * yBuf, int16_t * zBuf) {
+  static int16_t xOld = 0;
+  static int16_t yOld = 0;
+  static int16_t zOld = 0;
 
-  buf[0] = buf[0] - oldVal;
-  for (int i = 0; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
-    buf[i] = buf[i] - buf[i - 1];
+  xBuf[0] = xBuf[0] - xOld;
+  yBuf[0] = yBuf[0] - yOld;
+  zBuf[0] = zBuf[0] - zOld;
+
+  for (int i = 1; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
+    xBuf[i] = xBuf[i] - xBuf[i - 1];
+    yBuf[i] = yBuf[i] - yBuf[i - 1];
+    zBuf[i] = zBuf[i] - zBuf[i - 1];
   }
 
-  oldVal = buf[DEFAULT_ACCEL_BUFFER_SIZE - 1];
-}
-
-static void filter_accel_raw_data (void) {
-  // Median filters
-  do_accel_median_filter(sysData.accelData.xRaw);
-  do_accel_median_filter(sysData.accelData.yRaw);
-  do_accel_median_filter(sysData.accelData.zRaw);
-
-  // High pass filters
-  do_high_pass_filter(sysData.accelData.xRaw);
-  do_high_pass_filter(sysData.accelData.yRaw);
-  do_high_pass_filter(sysData.accelData.zRaw);
+  xOld = xBuf[DEFAULT_ACCEL_BUFFER_SIZE - 1];
+  yOld = yBuf[DEFAULT_ACCEL_BUFFER_SIZE - 1];
+  zOld = zBuf[DEFAULT_ACCEL_BUFFER_SIZE - 1];
 }
 
 // Save x y z data into buffers
 // Returns 0 if data buffer isn't full
 // Returns 1 if data buffers are full
 // Returns other value for an error
-int8_t get_and_filter_raw_accel_data (void) {
+static int8_t get_and_filter_raw_accel_data (void) {
   int8_t buffersFull = 0;
   static int indx = 0;
 
   if (sysConfig.accel.getEvent(&sysData.accelData.event)) {
     sysConfig.accel.getXYZ(sysData.accelData.xRaw[indx], sysData.accelData.yRaw[indx], sysData.accelData.zRaw[indx]);
-    if (indx > 511) {
-      // Buffers are full, so we can filter
-      // Then store the z in a copy for speech detection
-      filter_accel_raw_data();
+    // If buffers are full, then we filter
+    if (indx > DEFAULT_ACCEL_BUFFER_SIZE - 1) {
+      // Median filters
+      do_accel_median_filter(sysData.accelData.xRaw, sysData.accelData.yRaw, sysData.accelData.zRaw);
+      // High pass filters
+      do_high_pass_filter(sysData.accelData.xRaw, sysData.accelData.yRaw, sysData.accelData.zRaw);
+      // The z axis detects speech. Let's copy it so we can continue sampling
       memcpy(sysData.accelData.zCopy, sysData.accelData.zRaw, sizeof(sysData.accelData.zRaw));
       // Reset
       indx = 0;
@@ -190,19 +214,63 @@ int8_t get_and_filter_raw_accel_data (void) {
   return buffersFull;
 }
 
-// TODO: Fully implement
-static void get_accel_z_average (void) {
-  // Square the z data
-  for (int i = 0; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
-    sysData.accelData.zCopy[i] = sysData.accelData.zCopy[i] * sysData.accelData.zCopy[i];
+static void get_accel_z_average (float * speechAvg, float * bgAvg) {
+  // Square the z data and get the averages
+  float zSpeechSum = 0, zBgSum = 0;
+  float zSq[DEFAULT_ACCEL_BUFFER_SIZE] = {0};
+  float zSpeech[DEFAULT_ACCEL_BUFFER_SIZE] = {0};
+  float zBg[DEFAULT_ACCEL_BUFFER_SIZE] = {0};
+
+  zSq[0] = sysData.accelData.zCopy[0] * sysData.accelData.zCopy[0];
+  zSpeech[0] = 1; // Is this correct?
+  zBg[0] = 1; // Is this correct?
+  zSpeechSum = zSpeech[0]; zBgSum = zBg[0];
+
+  for (int i = 1; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
+    zSq[i] = sysData.accelData.zCopy[i] * sysData.accelData.zCopy[i];
+    zSpeech[i] = 0.02 * zSq[i] + 0.98 * zSpeech[i - 1];
+    zBg[i] = 0.001 * zSq[i] + 0.999 * zBg[i - 1];
+
+    zSpeechSum += zSpeech[i];
+    zBgSum += zBg[i];
   }
+
+  //ERROR: missing the 0th index
+  *speechAvg = zSpeechSum / DEFAULT_ACCEL_BUFFER_SIZE;
+  *bgAvg = zBgSum / DEFAULT_ACCEL_BUFFER_SIZE;
 }
 
-// TODO: Fully implement
-bool detect_accel_speech (void) {
+static bool is_accel_speech_detected (void) {
   // If the raw data has been filtered, then
   // we can start detect speech
+  bool isSpeaking = false;
+  float speechAvg = 0, bgAvg = 0;
   if (get_and_filter_raw_accel_data() == 1) {
-    get_accel_z_average();
+    get_accel_z_average(&speechAvg, &bgAvg);
+    if (speechAvg > 2 * bgAvg) {
+      isSpeaking = true;
+    } else {
+      isSpeaking = false;
+    }
   }
+
+  return isSpeaking;
+}
+
+void accel_thread (void) {
+  while(1) {
+    static int x = 0;
+    sysStatus.isSpeechDetected = is_accel_speech_detected();
+    if (sysStatus.isSpeechDetected) {
+      Serial.println("Speech detected!!!!");
+    }
+    threads.yield();
+    if (millis() - x > 10000) {
+      Serial.println("ACCEL: 10s passed.");
+      x += 10000;
+    }
+  }
+
+  // We should never reach the end of the thread
+  Serial.println("Accel thread ERROR!!!");
 }
