@@ -28,10 +28,19 @@ const int MOTOR_DRIVER_EN = 29;
 
 
 #define BUFFER_SIZE_MIC         512
+#define DELAYOFFSET              64
 
 // nlms
-short micLeftBuffer[BUFFER_SIZE_MIC];
-short micRightBuffer[BUFFER_SIZE_MIC];
+short micLeftBuffer[BUFFER_SIZE_MIC+128];//for offset
+short micRightBuffer[BUFFER_SIZE_MIC+128];
+
+//for iir filter to remove dc offset
+double yL[BUFFER_SIZE_MIC] = {0};
+double yR[BUFFER_SIZE_MIC] = {0};
+double yL_old = 0;
+double yR_old = 0;
+double micL_old = 0;
+double micR_old = 0;
 double micSum[2*BUFFER_SIZE_MIC]={0};
 double micDiff[2*BUFFER_SIZE_MIC]={0};
 double nlmsOut[BUFFER_SIZE_MIC];
@@ -60,7 +69,9 @@ extern const int16_t AudioWindowTukey1024[];
 
 float32_t v[512] = {0};
 float32_t magnitude = 0;
+float32_t diff_mag_squared = 0;
 float32_t dB_holder;
+float32_t noise_constant = 0.5;
 
 // Use these with the Teensy 3.5 & 3.6 SD card
 #define SDCARD_CS_PIN    BUILTIN_SDCARD // 254?
@@ -158,11 +169,28 @@ void continueRecording() {
   if (queue1.available() >= 4 && queue2.available() >= 4) {
     double micNoise[BUFFER_SIZE_MIC];
 
+    for (int i = 0; i < DELAYOFFSET; i++)
+      micLeftBuffer[i] = micLeftBuffer[i+BUFFER_SIZE_MIC];
+
     // If >= 1024 bytes of mic data is available, save in a buffer
-    memcpy(micLeftBuffer, queue1.readBuffer(), BUFFER_SIZE_MIC);
+    memcpy(micLeftBuffer+DELAYOFFSET, queue1.readBuffer(), BUFFER_SIZE_MIC);
     memcpy(micRightBuffer, queue2.readBuffer(), BUFFER_SIZE_MIC);
     queue1.freeBuffer();
     queue2.freeBuffer();
+
+    //remove DC offset
+    yL[0] = micLeftBuffer[0] - micL_old - 0.95*yL_old;
+    yR[0] = micRightBuffer[0] - micR_old - 0.95*yR_old;
+
+    for(int n=1; n < BUFFER_SIZE_MIC; n++){
+      yL[n] = micLeftBuffer[n] - micLeftBuffer[n-1] - 0.95*yL[n-1];
+      yR[n] = micRightBuffer[n] - micRightBuffer[n-1] - 0.95*yR[n-1];
+    }
+
+    yL_old = yL[BUFFER_SIZE_MIC-1];
+    yR_old = yR[BUFFER_SIZE_MIC-1];
+    micL_old = micLeftBuffer[BUFFER_SIZE_MIC-1]; 
+    micR_old = micRightBuffer[BUFFER_SIZE_MIC-1]; 
 
     // copy second half to first half
     for (int i = 0; i < BUFFER_SIZE_MIC; i++) {
@@ -170,11 +198,11 @@ void continueRecording() {
       micSum[i] = micSum[i + BUFFER_SIZE_MIC];
     }
 
-  //store new data in second helf
+  //store new data in second half
     for (int i = 0; i < BUFFER_SIZE_MIC; i++) {
-      micDiff[i+BUFFER_SIZE_MIC] = micLeftBuffer[i] - micRightBuffer[i];
+      micDiff[i+BUFFER_SIZE_MIC] = 0.78*yL[i] - yR[i];
       //Serial.println(micLeftBuffer[i],10);
-      micSum[i+BUFFER_SIZE_MIC] = micLeftBuffer[i] + micRightBuffer[i];
+      micSum[i+BUFFER_SIZE_MIC] = 0.78*yL[i] + yR[i];
     }
 
 
@@ -196,11 +224,13 @@ void continueRecording() {
 
     //BP and aweight filtering
     magnitude = 0;
+    diff_mag_squared = 0;
     dB_holder = 0;
       
     for (int i=0; i<512; i++) {
       v[i] = output[i] * bp_weight[i] * 1.0f/16384.0f; //* aWeight[i] * bp_weight[i] * 1.0f/16384.0f; //* 1.0f/262144.0f;//* 1/(512^2)
-      magnitude = magnitude + v[i]; // + sq(v[i]);
+      magnitude = magnitude + v[i]; // + sq(v[i]); already squared
+      diff_mag_squared = diff_mag_squared + sq(abs(micDiff[i+BUFFER_SIZE_MIC]));
     }
 
     //get spl and buzz?
@@ -210,15 +240,18 @@ void continueRecording() {
     dBStat.count++;
     dBStat.avg = dBStat.sum / dBStat.count;
 
-    Serial.println(nlmsOut[0], 6);
+    Serial.println(magnitude, 6);
     
     // Check for buzz every 96 dB samples
     if (dBStat.count >= 96) {
-      /*
-      if (dBStat.avg > dBLower && dBStat.avg < dBUpper && !motorOn) {
-          Serial.println(dBStat.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
-          buzzOn(); delay(250); buzzOff();
-      }*/
+    //nlmsOut
+    //micDiff second half
+      if(diff_mag_squared > (noise_constant * magnitude)) {
+        if (dBStat.avg > dBLower && dBStat.avg < dBUpper && !motorOn) {
+            Serial.println(dBStat.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
+            //buzzOn(); delay(250); buzzOff();
+        }
+      }
       dBStat.sum = 0;
       dBStat.count = 0;
       dBStat.avg = 0;
