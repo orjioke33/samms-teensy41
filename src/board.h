@@ -95,6 +95,7 @@ typedef struct {
 typedef struct {
     decibel_stats_t             dBStats;
     mic_energy_calculations_t   micEnergyData;
+    float32_t                   uptimeSeconds;
     accel_data_t                accelData;
 } samms_sys_data_t;
 

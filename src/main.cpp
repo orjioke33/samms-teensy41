@@ -47,6 +47,8 @@ void loop() {
   static int64_t x = 0;
   if (millis() - x > 10000) {
     x += 10000;
-    Serial.println("MAIN: 10s passed");
+    sysData.uptimeSeconds = millis() / 1000.000;
+    Serial.print("MAIN: 10s passed: ");
+    Serial.println(sysData.uptimeSeconds);
   }
 }

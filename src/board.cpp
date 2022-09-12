@@ -38,6 +38,7 @@ samms_sys_data_t sysData = {
         .diffMagSq = 0,
         .noiseConstant = 0.5,
     },
+    .uptimeSeconds = 0,
 };
 
 // sysStatus
