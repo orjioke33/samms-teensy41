@@ -74,3 +74,20 @@ int8_t samms_setup(void) {
 
     return err;
 }
+
+bool samms_toggle_buzz (bool turnOn) {
+    if (turnOn) {
+        if (!sysStatus.isMotorOn) {
+            Serial.println("BUZZING!");
+            analogWrite(TEENSY_MOTOR_DRIVER_EN, 0);
+            analogWrite(TEENSY_MOTOR_DRIVER_EN, 70);
+            sysStatus.isMotorOn = true;
+        }
+    } else {
+        if (sysStatus.isMotorOn) {
+            analogWrite(TEENSY_MOTOR_DRIVER_EN, 0);
+            sysStatus.isMotorOn = false;
+        }
+    }
+    return sysStatus.isMotorOn;
+}

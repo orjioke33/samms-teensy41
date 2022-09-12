@@ -109,5 +109,6 @@ extern samms_sys_data_t     sysData;
 extern samms_sys_status_t   sysStatus;
 
 int8_t samms_setup(void);
+bool samms_toggle_buzz(bool turnOn);
 
 #endif

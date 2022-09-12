@@ -115,6 +115,7 @@ void mic_filter_thread (void) {
   double yR_old = 0;
   double micL_old = 0;
   double micR_old = 0;
+  int8_t quietCounter = 0;
   float32_t v[512] = {0};
 
   //bins [7 42] should have weights 1 for BP filtering
@@ -202,14 +203,27 @@ void mic_filter_thread (void) {
       sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
       
       // Check for buzz every 96 dB samples
-      if (sysData.dBStats.count >= 64) {
+      if (sysData.dBStats.count >= 32) {
       //nlmsOut
       //micDiff second half
-        if(sysData.micEnergyData.diffMagSq > (sysData.micEnergyData.noiseConstant * sysData.micEnergyData.magnitude)) {
-          if (sysData.dBStats.avg > sysConfig.splUserConfig.splLowerdBA && sysData.dBStats.avg < sysConfig.splUserConfig.splUpperdBA && !sysStatus.isMotorOn) {
-              // Serial.println(sysData.dBStats.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
-              //buzzOn(); delay(250); buzzOff();
+        // if(sysData.micEnergyData.diffMagSq > (sysData.micEnergyData.noiseConstant * sysData.micEnergyData.magnitude)) {
+        //   if (sysData.dBStats.avg > sysConfig.splUserConfig.splLowerdBA && sysData.dBStats.avg < sysConfig.splUserConfig.splUpperdBA && !sysStatus.isMotorOn) {
+        //       // Serial.println(sysData.dBStats.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
+        //       //buzzOn(); delay(250); buzzOff();
+        //   }
+        // }
+
+        if (sysData.dBStats.avg < sysConfig.splUserConfig.splLowerdBA) {
+          quietCounter++;
+          if (quietCounter >= 6) {
+            // Around 3 seconds of the wearer speaking softly. Let's buzz.
+            samms_toggle_buzz(true);
+            quietCounter = 0;
+          } else {
+            samms_toggle_buzz(false);
           }
+        } else {
+          quietCounter = 0; // reset
         }
         Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
         sysData.dBStats.sum = 0;
