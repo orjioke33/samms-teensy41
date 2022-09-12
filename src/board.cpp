@@ -76,6 +76,34 @@ int8_t samms_setup(void) {
     return err;
 }
 
+void samms_open_file_rw (void) {
+
+ if (SD.exists("rawaccelx.txt")) {
+    SD.remove("rawaccelx.txt");
+  }
+  sysData.files.faccelx = SD.open("rawaccelx.txt", FILE_WRITE);
+  if (sysData.files.faccelx) {
+    Serial.println("File Open X");
+  }
+
+  if (SD.exists("rawaccely.txt")) {
+    SD.remove("rawaccely.txt");
+  }
+  sysData.files.faccely = SD.open("rawaccely.txt", FILE_WRITE);
+  if (sysData.files.faccely) {
+    Serial.println("File Open Y");
+  }
+
+  if (SD.exists("rawaccelz.txt")) {
+    SD.remove("rawaccelz.txt");
+  }
+  sysData.files.faccelz = SD.open("rawaccelz.txt", FILE_WRITE);
+  if (sysData.files.faccelz) {
+    Serial.println("File Open Z");
+  }
+
+}
+
 bool samms_toggle_buzz (bool turnOn) {
     if (turnOn) {
         if (!sysStatus.isMotorOn) {

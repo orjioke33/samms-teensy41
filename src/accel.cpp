@@ -196,6 +196,13 @@ static int8_t get_and_filter_raw_accel_data (void) {
     sysConfig.accel.getXYZ(sysData.accelData.xRaw[indx], sysData.accelData.yRaw[indx], sysData.accelData.zRaw[indx]);
     // If buffers are full, then we filter
     if (indx > DEFAULT_ACCEL_BUFFER_SIZE - 1) {
+      // Write it
+      if (sysData.uptimeSeconds < 34) {
+        sysData.files.faccelx.write(sysData.accelData.xRaw, sizeof(sysData.accelData.xRaw));
+        sysData.files.faccely.write(sysData.accelData.yRaw, sizeof(sysData.accelData.yRaw));
+        sysData.files.faccelz.write(sysData.accelData.zRaw, sizeof(sysData.accelData.zRaw));
+        Serial.println("Wrote x y z accel files");
+      }
       // Median filters
       do_accel_median_filter(sysData.accelData.xRaw, sysData.accelData.yRaw, sysData.accelData.zRaw);
       // High pass filters
@@ -261,6 +268,7 @@ static bool is_accel_speech_detected (void) {
 }
 
 void accel_thread (void) {
+  bool fileClosed = false;
   while(1) {
     static int64_t x = 0;
     sysStatus.isSpeechDetected = is_accel_speech_detected();
@@ -268,9 +276,18 @@ void accel_thread (void) {
       Serial.println("Speech detected!!!!");
     }
     threads.yield();
-    if (millis() - x > 10000) {
-      Serial.println("ACCEL: 10s passed.");
-      x += 10000;
+    if (millis() - x > 2000) {
+      Serial.println("ACCEL: 2s passed.");
+      x += 2000;
+    }
+    if (sysData.uptimeSeconds >= 32 && !fileClosed) {
+      Serial.println("closed x files");
+      sysData.files.faccelx.close();
+      Serial.println("closed y files");
+      sysData.files.faccely.close();
+      Serial.println("closed z files");
+      sysData.files.faccelz.close();
+      fileClosed = true;
     }
   }
 

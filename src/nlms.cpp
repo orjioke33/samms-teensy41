@@ -233,9 +233,9 @@ void mic_filter_thread (void) {
     }
     threads.yield();
     static int64_t x = 0;
-    if (millis() - x > 10000) {
-      x += 10000;
-      Serial.println("MIC FILTER: 10s passed");
+    if (millis() - x > 2000) {
+      x += 2000;
+      Serial.println("MIC FILTER: 2s passed");
     }
   }
   Serial.println("MIC FILTER THREAD ERROR!!!!");

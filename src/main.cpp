@@ -24,6 +24,9 @@ void setup() {
   // to buffer incoming audio
   AudioMemory(120);
 
+  Wire.setClock(400000); // i2c fast mode
+  Wire.begin();
+
   // setup driver, motor, sd card
   // and accelerometer
   delay(8000);
@@ -31,6 +34,8 @@ void setup() {
   while (samms_setup() != ERR_SAMMS_OK) {
       delay(5000); // Check every 5 seconds.
   }
+
+  samms_open_file_rw();
 
   Serial.println("SAMMS Setup succeeded. Starting mic sampling...");
   sysConfig.mic.queue1.begin();
@@ -45,10 +50,10 @@ void setup() {
 
 void loop() {
   static int64_t x = 0;
-  if (millis() - x > 10000) {
-    x += 10000;
+  if (millis() - x > 2000) {
+    x += 2000;
     sysData.uptimeSeconds = millis() / 1000.000;
-    Serial.print("MAIN: 10s passed: ");
+    Serial.print("MAIN: 2s passed: ");
     Serial.println(sysData.uptimeSeconds);
   }
 }

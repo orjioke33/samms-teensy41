@@ -91,12 +91,22 @@ typedef struct {
     sensors_event_t event;
 } accel_data_t;
 
+typedef struct {
+  File faccelx;
+  File faccely;
+  File faccelz;
+  File fmicraw;
+  File fnlms;
+  File ffft;
+} file_handler_data_t;
+
 // System data
 typedef struct {
     decibel_stats_t             dBStats;
     mic_energy_calculations_t   micEnergyData;
     float32_t                   uptimeSeconds;
     accel_data_t                accelData;
+    file_handler_data_t         files;
 } samms_sys_data_t;
 
 // System status
@@ -111,5 +121,6 @@ extern samms_sys_status_t   sysStatus;
 
 int8_t samms_setup(void);
 bool samms_toggle_buzz(bool turnOn);
+void samms_open_file_rw(void);
 
 #endif
