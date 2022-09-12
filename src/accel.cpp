@@ -216,14 +216,15 @@ static int8_t get_and_filter_raw_accel_data (void) {
 
 static void get_accel_z_average (float * speechAvg, float * bgAvg) {
   // Square the z data and get the averages
+  static float oldZSpeech = 0, oldZBg = 0;
   float zSpeechSum = 0, zBgSum = 0;
   float zSq[DEFAULT_ACCEL_BUFFER_SIZE] = {0};
   float zSpeech[DEFAULT_ACCEL_BUFFER_SIZE] = {0};
   float zBg[DEFAULT_ACCEL_BUFFER_SIZE] = {0};
 
   zSq[0] = sysData.accelData.zCopy[0] * sysData.accelData.zCopy[0];
-  zSpeech[0] = 1; // Is this correct?
-  zBg[0] = 1; // Is this correct?
+  zSpeech[0] = 0.02 * zSq[0] + 0.98 * oldZSpeech;
+  zBg[0] = 0.001 * zSq[0] + 0.999 * oldZBg;
   zSpeechSum = zSpeech[0]; zBgSum = zBg[0];
 
   for (int i = 1; i < DEFAULT_ACCEL_BUFFER_SIZE; i++) {
@@ -235,7 +236,9 @@ static void get_accel_z_average (float * speechAvg, float * bgAvg) {
     zBgSum += zBg[i];
   }
 
-  //ERROR: missing the 0th index
+  oldZSpeech = zSpeech[DEFAULT_ACCEL_BUFFER_SIZE - 1];
+  oldZBg = zBg[DEFAULT_ACCEL_BUFFER_SIZE - 1];
+
   *speechAvg = zSpeechSum / DEFAULT_ACCEL_BUFFER_SIZE;
   *bgAvg = zBgSum / DEFAULT_ACCEL_BUFFER_SIZE;
 }
