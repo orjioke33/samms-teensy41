@@ -12,14 +12,31 @@ samms_sys_config_t sysConfig = {
         .splUpperdBA = -1,
     },
     .accel = Adafruit_ADXL343(0),
+    .micFilter = {
+        .yL = {0},
+        .yR = {0},
+        .micSum = {0},
+        .micDiff = {0},
+        .nlms_weights = {0},
+    },
+    .fftConfig = {
+        .buffer = {0},
+        .cmplx_mag = {0},
+    }
 };
 
 // sysData
 samms_sys_data_t sysData = {
     .dBStats = {
+        .curr = 0,
         .sum = 0,
         .avg = 0,
         .count = 0,
+    },
+    .micEnergyData = {
+        .magnitude = 0,
+        .diffMagSq = 0,
+        .noiseConstant = 0.5,
     },
 };
 

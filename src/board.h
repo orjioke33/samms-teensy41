@@ -20,48 +20,82 @@
 #define ERR_ACCEL_BEGIN_FAIL        -1
 
 #define DEFAULT_ACCEL_BUFFER_SIZE   512
+#define BUFFER_SIZE_MIC             512
+#define DELAYOFFSET                 64
 
 // Spl file and limits
 typedef struct {
-    char fileName[32];
-    float splLowerdBA;
-    float splUpperdBA;
+    char    fileName[32];
+    float   splLowerdBA;
+    float   splUpperdBA;
 } spl_user_config_t;
 
+// PJRC audio library objects
 typedef struct {
     AudioInputI2S            i2sL;           // left mic
     AudioInputI2S2           i2sR;           // right mic
     AudioRecordQueue         queue1;         // left mic raw buf
     AudioRecordQueue         queue2;         // right mic raw buf
-} samms_mic_config_t;
+} mic_config_t;
+
+// Microphone buffers
+typedef struct {
+    double yL[BUFFER_SIZE_MIC];
+    double yR[BUFFER_SIZE_MIC];
+    double micSum[2*BUFFER_SIZE_MIC];
+    double micDiff[2*BUFFER_SIZE_MIC];
+    double nlms_weights[128];
+    short micLeftBuffer[BUFFER_SIZE_MIC+128];//for offset
+    short micRightBuffer[BUFFER_SIZE_MIC+128];
+    double nlmsOut[BUFFER_SIZE_MIC];
+    float32_t bp_weight[512];
+} mic_filter_config_t;
+
+// Arm fft objects and buffers
+typedef struct {
+    float32_t               buffer[1024];
+    float32_t               cmplx_mag[512];
+    float32_t               output[512] __attribute__ ((aligned (4)));
+    arm_cfft_instance_f32   fft_inst;
+} fft_config_t;
 
 // System configuration values
 typedef struct {
-    spl_user_config_t splUserConfig;
-    Adafruit_ADXL343  accel;
-    samms_mic_config_t mic;
+    spl_user_config_t   splUserConfig;
+    Adafruit_ADXL343    accel;
+    mic_filter_config_t micFilter;
+    fft_config_t        fftConfig;
+    mic_config_t        mic;
 } samms_sys_config_t;
 
 // Decibel statistics from the mic
 typedef struct {
+  float curr;
   float sum;
   float avg;
-  int count;
+  int   count;
 } decibel_stats_t;
+
+typedef struct {
+    float32_t magnitude;
+    float32_t diffMagSq;
+    float32_t noiseConstant;
+} mic_energy_calculations_t;
 
 // Accelerometer data
 typedef struct {
-    int16_t xRaw[DEFAULT_ACCEL_BUFFER_SIZE];
-    int16_t yRaw[DEFAULT_ACCEL_BUFFER_SIZE];
-    int16_t zRaw[DEFAULT_ACCEL_BUFFER_SIZE];
-    int16_t zCopy[DEFAULT_ACCEL_BUFFER_SIZE];
+    int16_t         xRaw[DEFAULT_ACCEL_BUFFER_SIZE];
+    int16_t         yRaw[DEFAULT_ACCEL_BUFFER_SIZE];
+    int16_t         zRaw[DEFAULT_ACCEL_BUFFER_SIZE];
+    int16_t         zCopy[DEFAULT_ACCEL_BUFFER_SIZE];
     sensors_event_t event;
 } accel_data_t;
 
 // System data
 typedef struct {
-    decibel_stats_t dBStats;
-    accel_data_t accelData;
+    decibel_stats_t             dBStats;
+    mic_energy_calculations_t   micEnergyData;
+    accel_data_t                accelData;
 } samms_sys_data_t;
 
 // System status

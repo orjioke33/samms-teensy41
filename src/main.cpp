@@ -38,6 +38,7 @@ void setup() {
   delay(5000);
   // Thread function, thread arguments, stack size in bytes
   threads.addThread(accel_thread, 0, 8192);
+  threads.addThread(mic_filter_thread, 0, 8192);
   Serial.println("Starting accel sampling...");
 }
 
@@ -46,6 +47,6 @@ void loop() {
   static int64_t x = 0;
   if (millis() - x > 10000) {
     x += 10000;
-    Serial.println("10s passed");
+    Serial.println("MAIN: 10s passed");
   }
 }

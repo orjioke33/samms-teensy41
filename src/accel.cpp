@@ -262,7 +262,7 @@ static bool is_accel_speech_detected (void) {
 
 void accel_thread (void) {
   while(1) {
-    static int x = 0;
+    static int64_t x = 0;
     sysStatus.isSpeechDetected = is_accel_speech_detected();
     if (sysStatus.isSpeechDetected) {
       Serial.println("Speech detected!!!!");

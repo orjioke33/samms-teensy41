@@ -1,4 +1,9 @@
+#include <Arduino.h>
+#include <Audio.h>
+#include <TeensyThreads.h>
+
 #include "nlms.h"
+#include "board.h"
 #include "arm_math.h"
 #include "sqrt_integer.h"
 #include "utility/dspinst.h"
@@ -103,4 +108,121 @@ void apply_window_to_fft_buffer(void *buffer, const void *window)
 		buf += 2;
 	}
 
+}
+
+void mic_filter_thread (void) {
+  double yL_old = 0;
+  double yR_old = 0;
+  double micL_old = 0;
+  double micR_old = 0;
+  float32_t v[512] = {0};
+
+  //bins [7 42] should have weights 1 for BP filtering
+  for(int i=0; i<512; i++) {
+    if(i > 42){
+      sysConfig.micFilter.bp_weight[i] = 0.0;
+    } else if(i > 6) {
+      sysConfig.micFilter.bp_weight[i] = 1.0;
+    } else {
+      sysConfig.micFilter.bp_weight[i] = 0.0;
+    }
+  }
+
+  while (1) {
+    if (sysConfig.mic.queue1.available() >= 4 && sysConfig.mic.queue2.available() >= 4) {
+      double micNoise[BUFFER_SIZE_MIC];
+
+      for (int i = 0; i < DELAYOFFSET; i++)
+        sysConfig.micFilter.micLeftBuffer[i] = sysConfig.micFilter.micLeftBuffer[i+BUFFER_SIZE_MIC];
+
+      // If >= 1024 bytes of mic data is available, save in a buffer
+      memcpy(sysConfig.micFilter.micLeftBuffer+DELAYOFFSET, sysConfig.mic.queue1.readBuffer(), BUFFER_SIZE_MIC);
+      memcpy(sysConfig.micFilter.micRightBuffer, sysConfig.mic.queue2.readBuffer(), BUFFER_SIZE_MIC);
+      sysConfig.mic.queue1.freeBuffer();
+      sysConfig.mic.queue2.freeBuffer();
+
+      //remove DC offset
+      sysConfig.micFilter.yL[0] = sysConfig.micFilter.micLeftBuffer[0] -
+                                  micL_old - 0.95*yL_old;
+      sysConfig.micFilter.yR[0] = sysConfig.micFilter.micRightBuffer[0] -
+                                  micR_old - 0.95*yR_old;
+
+      for(int n=1; n < BUFFER_SIZE_MIC; n++){
+        sysConfig.micFilter.yL[n] = sysConfig.micFilter.micLeftBuffer[n] - 
+                                    sysConfig.micFilter.micLeftBuffer[n-1] - 0.95*sysConfig.micFilter.yL[n-1];
+        sysConfig.micFilter.yR[n] = sysConfig.micFilter.micRightBuffer[n] - 
+                                    sysConfig.micFilter.micRightBuffer[n-1] - 0.95*sysConfig.micFilter.yR[n-1];
+      }
+
+      yL_old = sysConfig.micFilter.yL[BUFFER_SIZE_MIC-1];
+      yR_old = sysConfig.micFilter.yR[BUFFER_SIZE_MIC-1];
+      micL_old = sysConfig.micFilter.micLeftBuffer[BUFFER_SIZE_MIC-1]; 
+      micR_old = sysConfig.micFilter.micRightBuffer[BUFFER_SIZE_MIC-1]; 
+
+      // copy second half to first half
+      for (int i = 0; i < BUFFER_SIZE_MIC; i++) {
+        sysConfig.micFilter.micDiff[i] = sysConfig.micFilter.micDiff[i + BUFFER_SIZE_MIC];
+        sysConfig.micFilter.micSum[i] = sysConfig.micFilter.micSum[i + BUFFER_SIZE_MIC];
+      }
+
+      //store new data in second half
+      for (int i = 0; i < BUFFER_SIZE_MIC; i++) {
+        sysConfig.micFilter.micDiff[i+BUFFER_SIZE_MIC] = 0.78*sysConfig.micFilter.yL[i] - 
+          sysConfig.micFilter.yR[i];
+        sysConfig.micFilter.micSum[i+BUFFER_SIZE_MIC] = 0.78*sysConfig.micFilter.yL[i] + 
+          sysConfig.micFilter.yR[i];
+      }
+
+
+      // Filter background noise
+      do_nlms(sysConfig.micFilter.micDiff, sysConfig.micFilter.micSum, micNoise, sysConfig.micFilter.nlmsOut,
+              sysConfig.micFilter.nlms_weights, 0.1, 128, BUFFER_SIZE_MIC);
+
+      // Do fft
+      copy_to_fft_buffer(sysConfig.fftConfig.buffer, sysConfig.micFilter.nlmsOut);
+      arm_cfft_f32(&sysConfig.fftConfig.fft_inst, sysConfig.fftConfig.buffer, 0, 1);//no bit reverse
+      arm_cmplx_mag_squared_f32(sysConfig.fftConfig.buffer, sysConfig.fftConfig.output, 512);
+
+      //BP and aweight filtering
+      sysData.micEnergyData.magnitude = 0;
+      sysData.micEnergyData.diffMagSq = 0;
+      sysData.dBStats.curr = 0;
+      
+      for (int i=0; i<512; i++) {
+        v[i] = sysConfig.fftConfig.output[i] * sysConfig.micFilter.bp_weight[i] * 1.0f/16384.0f; //* aWeight[i] * bp_weight[i] * 1.0f/16384.0f; //* 1.0f/262144.0f;//* 1/(512^2)
+        sysData.micEnergyData.magnitude = sysData.micEnergyData.magnitude + v[i]; // + sq(v[i]); already squared
+        sysData.micEnergyData.diffMagSq = sysData.micEnergyData.diffMagSq + sq(abs(sysConfig.micFilter.micDiff[i+BUFFER_SIZE_MIC]));
+      }
+
+      //get spl and buzz?
+
+      sysData.dBStats.curr = log10f(sysData.micEnergyData.magnitude) * 10  + 45.05;
+      sysData.dBStats.sum += sysData.dBStats.curr;
+      sysData.dBStats.count++;
+      sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
+      
+      // Check for buzz every 96 dB samples
+      if (sysData.dBStats.count >= 64) {
+      //nlmsOut
+      //micDiff second half
+        if(sysData.micEnergyData.diffMagSq > (sysData.micEnergyData.noiseConstant * sysData.micEnergyData.magnitude)) {
+          if (sysData.dBStats.avg > sysConfig.splUserConfig.splLowerdBA && sysData.dBStats.avg < sysConfig.splUserConfig.splUpperdBA && !sysStatus.isMotorOn) {
+              // Serial.println(sysData.dBStats.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
+              //buzzOn(); delay(250); buzzOff();
+          }
+        }
+        Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
+        sysData.dBStats.sum = 0;
+        sysData.dBStats.count = 0;
+        sysData.dBStats.avg = 0;
+      }
+    }
+    threads.yield();
+    static int64_t x = 0;
+    if (millis() - x > 10000) {
+      x += 10000;
+      Serial.println("MIC FILTER: 10s passed");
+    }
+  }
+  Serial.println("MIC FILTER THREAD ERROR!!!!");
 }
