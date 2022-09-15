@@ -104,12 +104,12 @@ void samms_open_file_rw (void) {
     Serial.println("File Open Z");
   }
 
-  if (SD.exists("MICRAWNEW_newheadset.RAW")) {
-    SD.remove("MICRAWNEW_newheadset.RAW");
+  if (SD.exists("MICRAWNEW_oldheadset.RAW")) {
+    SD.remove("MICRAWNEW_oldheadset.RAW");
   }
-  sysData.files.fmicraw = SD.open("MICRAWNEW_newheadset.RAW", FILE_WRITE);
+  sysData.files.fmicraw = SD.open("MICRAWNEW_oldheadset.RAW", FILE_WRITE);
   if (sysData.files.fmicraw) {
-    Serial.println("File Open MICRAWNEW_newheadset");
+    Serial.println("File Open MICRAWNEW_oldheadset");
   }
 
 }

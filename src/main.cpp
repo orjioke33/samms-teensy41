@@ -16,7 +16,7 @@
 #include "arm_math.h"
 #include "sqrt_integer.h"
 
-AudioConnection          patchCord1(sysConfig.mic.i2sL, 0, sysConfig.mic.queue1, 0); // Left Channel
+AudioConnection          patchCord1(sysConfig.mic.i2sL, 1, sysConfig.mic.queue1, 0); // Left Channel
 AudioConnection          patchCord2(sysConfig.mic.i2sR, 0, sysConfig.mic.queue2, 0); // Right Channel
 
 void setup() {
