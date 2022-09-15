@@ -110,6 +110,31 @@ void apply_window_to_fft_buffer(void *buffer, const void *window)
 
 }
 
+void write_raw_mic_data_to_sd (float timeRecording) {
+
+    short fullBuffer[256] = {0};
+    static bool closed = false;
+    int b = 0;
+    for (int i = 0; i < 256; i+=2) {
+      fullBuffer[i] = sysConfig.micFilter.micLeftBuffer[b];
+      fullBuffer[i+1] = sysConfig.micFilter.micRightBuffer[b];
+      b++;
+    }
+
+    elapsedMicros usec = 0;
+    if (!closed && sysData.uptimeSeconds < timeRecording && sysData.files.fmicraw) {
+      sysData.files.fmicraw.write(fullBuffer, 512);  //256 or 512 (dudes code)
+      Serial.print("write raw data. usec = "); Serial.println(usec);
+    }
+
+    if (sysData.files.fmicraw && sysData.uptimeSeconds >= timeRecording) {
+      Serial.println("Closing raw files");
+      sysData.files.fmicraw.close();
+      closed = true;
+    }
+  
+}
+
 void mic_filter_thread (void) {
   double yL_old = 0;
   double yR_old = 0;
@@ -117,6 +142,7 @@ void mic_filter_thread (void) {
   double micR_old = 0;
   int8_t quietCounter = 0;
   float32_t v[512] = {0};
+  bool closed = false;
 
   //bins [7 42] should have weights 1 for BP filtering
   for(int i=0; i<512; i++) {
@@ -130,17 +156,19 @@ void mic_filter_thread (void) {
   }
 
   while (1) {
-    if (sysConfig.mic.queue1.available() >= 4 && sysConfig.mic.queue2.available() >= 4) {
+    if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2) {
       double micNoise[BUFFER_SIZE_MIC];
 
       for (int i = 0; i < DELAYOFFSET; i++)
         sysConfig.micFilter.micLeftBuffer[i] = sysConfig.micFilter.micLeftBuffer[i+BUFFER_SIZE_MIC];
 
       // If >= 1024 bytes of mic data is available, save in a buffer
-      memcpy(sysConfig.micFilter.micLeftBuffer+DELAYOFFSET, sysConfig.mic.queue1.readBuffer(), BUFFER_SIZE_MIC);
-      memcpy(sysConfig.micFilter.micRightBuffer, sysConfig.mic.queue2.readBuffer(), BUFFER_SIZE_MIC);
+      memcpy(sysConfig.micFilter.micLeftBuffer+DELAYOFFSET, sysConfig.mic.queue1.readBuffer(), BUFFER_SIZE_MIC*2);
+      memcpy(sysConfig.micFilter.micRightBuffer, sysConfig.mic.queue2.readBuffer(), BUFFER_SIZE_MIC*2);
       sysConfig.mic.queue1.freeBuffer();
       sysConfig.mic.queue2.freeBuffer();
+
+      write_raw_mic_data_to_sd(40);
 
       //remove DC offset
       sysConfig.micFilter.yL[0] = sysConfig.micFilter.micLeftBuffer[0] -
@@ -177,7 +205,7 @@ void mic_filter_thread (void) {
 
       // Filter background noise
       do_nlms(sysConfig.micFilter.micDiff, sysConfig.micFilter.micSum, micNoise, sysConfig.micFilter.nlmsOut,
-              sysConfig.micFilter.nlms_weights, 0.1, 128, BUFFER_SIZE_MIC);
+              sysConfig.micFilter.nlms_weights, 0.1, 100, BUFFER_SIZE_MIC);
 
       // Do fft
       copy_to_fft_buffer(sysConfig.fftConfig.buffer, sysConfig.micFilter.nlmsOut);
@@ -203,39 +231,33 @@ void mic_filter_thread (void) {
       sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
       
       // Check for buzz every 96 dB samples
-      if (sysData.dBStats.count >= 32) {
-      //nlmsOut
-      //micDiff second half
-        // if(sysData.micEnergyData.diffMagSq > (sysData.micEnergyData.noiseConstant * sysData.micEnergyData.magnitude)) {
-        //   if (sysData.dBStats.avg > sysConfig.splUserConfig.splLowerdBA && sysData.dBStats.avg < sysConfig.splUserConfig.splUpperdBA && !sysStatus.isMotorOn) {
-        //       // Serial.println(sysData.dBStats.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
-        //       //buzzOn(); delay(250); buzzOff();
-        //   }
-        // }
+      // if (sysData.dBStats.count >= 32) {
+      // //nlmsOut
+      // //micDiff second half
+      //   // if(sysData.micEnergyData.diffMagSq > (sysData.micEnergyData.noiseConstant * sysData.micEnergyData.magnitude)) {
+      //   //   if (sysData.dBStats.avg > sysConfig.splUserConfig.splLowerdBA && sysData.dBStats.avg < sysConfig.splUserConfig.splUpperdBA && !sysStatus.isMotorOn) {
+      //   //       // Serial.println(sysData.dBStats.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
+      //   //       //buzzOn(); delay(250); buzzOff();
+      //   //   }
+      //   // }
 
-        if (sysData.dBStats.avg < sysConfig.splUserConfig.splLowerdBA) {
-          quietCounter++;
-          if (quietCounter >= 6) {
-            // Around 3 seconds of the wearer speaking softly. Let's buzz.
-            samms_toggle_buzz(true);
-            quietCounter = 0;
-          } else {
-            samms_toggle_buzz(false);
-          }
-        } else {
-          quietCounter = 0; // reset
-        }
-        Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
-        sysData.dBStats.sum = 0;
-        sysData.dBStats.count = 0;
-        sysData.dBStats.avg = 0;
-      }
-    }
-    threads.yield();
-    static int64_t x = 0;
-    if (millis() - x > 2000) {
-      x += 2000;
-      Serial.println("MIC FILTER: 2s passed");
+      //   if (sysData.dBStats.avg < sysConfig.splUserConfig.splLowerdBA) {
+      //     quietCounter++;
+      //     if (quietCounter >= 6) {
+      //       // Around 3 seconds of the wearer speaking softly. Let's buzz.
+      //       samms_toggle_buzz(true);
+      //       quietCounter = 0;
+      //     } else {
+      //       samms_toggle_buzz(false);
+      //     }
+      //   } else {
+      //     quietCounter = 0; // reset
+      //   }
+      //   Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
+      //   sysData.dBStats.sum = 0;
+      //   sysData.dBStats.count = 0;
+      //   sysData.dBStats.avg = 0;
+      // }
     }
   }
   Serial.println("MIC FILTER THREAD ERROR!!!!");

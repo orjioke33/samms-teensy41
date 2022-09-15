@@ -20,8 +20,9 @@
 #define ERR_ACCEL_BEGIN_FAIL        -1
 
 #define DEFAULT_ACCEL_BUFFER_SIZE   512
-#define BUFFER_SIZE_MIC             512
-#define DELAYOFFSET                 64
+#define BUFFER_SIZE_MIC             128
+//#define DELAYOFFSET                 64
+#define DELAYOFFSET                 0
 
 // Spl file and limits
 typedef struct {
@@ -44,7 +45,7 @@ typedef struct {
     double yR[BUFFER_SIZE_MIC];
     double micSum[2*BUFFER_SIZE_MIC];
     double micDiff[2*BUFFER_SIZE_MIC];
-    double nlms_weights[128];
+    double nlms_weights[100];
     short micLeftBuffer[BUFFER_SIZE_MIC+128];//for offset
     short micRightBuffer[BUFFER_SIZE_MIC+128];
     double nlmsOut[BUFFER_SIZE_MIC];

@@ -18,6 +18,8 @@ samms_sys_config_t sysConfig = {
         .micSum = {0},
         .micDiff = {0},
         .nlms_weights = {0},
+        .micLeftBuffer = {0},
+        .micRightBuffer = {0},
     },
     .fftConfig = {
         .buffer = {0},
@@ -100,6 +102,14 @@ void samms_open_file_rw (void) {
   sysData.files.faccelz = SD.open("rawaccelz.txt", FILE_WRITE);
   if (sysData.files.faccelz) {
     Serial.println("File Open Z");
+  }
+
+  if (SD.exists("MICRAWNEW_newheadset.RAW")) {
+    SD.remove("MICRAWNEW_newheadset.RAW");
+  }
+  sysData.files.fmicraw = SD.open("MICRAWNEW_newheadset.RAW", FILE_WRITE);
+  if (sysData.files.fmicraw) {
+    Serial.println("File Open MICRAWNEW_newheadset");
   }
 
 }
