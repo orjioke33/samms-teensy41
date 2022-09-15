@@ -8,6 +8,9 @@
 #include "sqrt_integer.h"
 #include "utility/dspinst.h"
 
+uint32_t timerStart2 = 0;
+int mode2 = 0;
+
 void do_nlms(double *x, double *d, double *dhat, double *e, double *w, double mu, int N, int xlen)
 {
 
@@ -117,6 +120,8 @@ void mic_filter_thread (void) {
   double micR_old = 0;
   int8_t quietCounter = 0;
   float32_t v[512] = {0};
+  timerStart2 = millis();
+  bool fileClosed = false;
 
   //bins [7 42] should have weights 1 for BP filtering
   for(int i=0; i<512; i++) {
@@ -141,6 +146,14 @@ void mic_filter_thread (void) {
       memcpy(sysConfig.micFilter.micRightBuffer, sysConfig.mic.queue2.readBuffer(), BUFFER_SIZE_MIC);
       sysConfig.mic.queue1.freeBuffer();
       sysConfig.mic.queue2.freeBuffer();
+
+      if (WRITE_TO_FILE && millis() - timerStart2 < 30000) {
+        mode2 = 1;
+        sysData.files.fmicleftraw.write(sysConfig.micFilter.micLeftBuffer, sizeof(sysConfig.micFilter.micLeftBuffer));
+        sysData.files.fmicrightraw.write(sysConfig.micFilter.micRightBuffer, sizeof(sysConfig.micFilter.micRightBuffer));
+      } else {
+        mode2 = 2;
+      }
 
       //remove DC offset
       sysConfig.micFilter.yL[0] = sysConfig.micFilter.micLeftBuffer[0] -
@@ -174,15 +187,37 @@ void mic_filter_thread (void) {
           sysConfig.micFilter.yR[i];
       }
 
+      if (WRITE_TO_FILE && millis() - timerStart2 < 30000) {
+        mode2 = 1;
+        sysData.files.fmicraw.write(sysConfig.micFilter.micSum, sizeof(sysConfig.micFilter.micSum));
+        //Serial.println("Mic Filter: wrote micSum");
+      } else {
+        mode2 = 2;
+      }
 
       // Filter background noise
       do_nlms(sysConfig.micFilter.micDiff, sysConfig.micFilter.micSum, micNoise, sysConfig.micFilter.nlmsOut,
               sysConfig.micFilter.nlms_weights, 0.1, 128, BUFFER_SIZE_MIC);
 
+      if (WRITE_TO_FILE && millis() - timerStart2 < 30000) {
+        mode2 = 1;
+        sysData.files.fnlms.write(sysConfig.micFilter.nlmsOut, sizeof(sysConfig.micFilter.nlmsOut));
+        //Serial.println("Mic Filter: wrote nlmsOut");
+      } else {
+        mode2 = 2;
+      }
+
       // Do fft
       copy_to_fft_buffer(sysConfig.fftConfig.buffer, sysConfig.micFilter.nlmsOut);
       arm_cfft_f32(&sysConfig.fftConfig.fft_inst, sysConfig.fftConfig.buffer, 0, 1);//no bit reverse
       arm_cmplx_mag_squared_f32(sysConfig.fftConfig.buffer, sysConfig.fftConfig.output, 512);
+      if (WRITE_TO_FILE && millis() - timerStart2 < 30000) {
+        mode2 = 1;
+        sysData.files.ffft.write(sysConfig.fftConfig.output, sizeof(sysConfig.fftConfig.output));
+        //Serial.println("Mic Filter: wrote fftConfig.output");
+      } else {
+        mode2 = 2;
+      }
 
       //BP and aweight filtering
       sysData.micEnergyData.magnitude = 0;
@@ -217,25 +252,32 @@ void mic_filter_thread (void) {
           quietCounter++;
           if (quietCounter >= 6) {
             // Around 3 seconds of the wearer speaking softly. Let's buzz.
-            samms_toggle_buzz(true);
+            //samms_toggle_buzz(true);
             quietCounter = 0;
           } else {
-            samms_toggle_buzz(false);
+            //samms_toggle_buzz(false);
           }
         } else {
           quietCounter = 0; // reset
         }
-        Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
+        //Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
         sysData.dBStats.sum = 0;
         sysData.dBStats.count = 0;
         sysData.dBStats.avg = 0;
       }
     }
-    threads.yield();
-    static int64_t x = 0;
-    if (millis() - x > 2000) {
-      x += 2000;
-      Serial.println("MIC FILTER: 2s passed");
+    // threads.yield(); // This pauses the thread for way too long
+    if (WRITE_TO_FILE && mode2 == 2 && !fileClosed) {
+      Serial.println("closed fmicraw files");
+      sysData.files.fmicraw.close();
+      Serial.println("closed fnlms files");
+      sysData.files.fnlms.close();
+      Serial.println("closed ffft files");
+      sysData.files.ffft.close();
+      Serial.println("closed left mic and right mic files");
+      sysData.files.fmicleftraw.close();
+      sysData.files.fmicrightraw.close();
+      fileClosed = true;
     }
   }
   Serial.println("MIC FILTER THREAD ERROR!!!!");

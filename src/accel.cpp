@@ -7,6 +7,9 @@
 #include "board.h"
 #include "accel.h"
 
+uint32_t timerStart = 0;
+int8_t mode = 0;
+
 int8_t setup_accel(void) {
     int8_t err = ERR_SAMMS_OK;
 
@@ -196,12 +199,15 @@ static int8_t get_and_filter_raw_accel_data (void) {
     sysConfig.accel.getXYZ(sysData.accelData.xRaw[indx], sysData.accelData.yRaw[indx], sysData.accelData.zRaw[indx]);
     // If buffers are full, then we filter
     if (indx > DEFAULT_ACCEL_BUFFER_SIZE - 1) {
-      // Write it
-      if (sysData.uptimeSeconds < 34) {
+      // Write the first 30 seconds
+      if (WRITE_TO_FILE && millis() - timerStart < 30000) {
+        mode = 1;
         sysData.files.faccelx.write(sysData.accelData.xRaw, sizeof(sysData.accelData.xRaw));
         sysData.files.faccely.write(sysData.accelData.yRaw, sizeof(sysData.accelData.yRaw));
         sysData.files.faccelz.write(sysData.accelData.zRaw, sizeof(sysData.accelData.zRaw));
-        Serial.println("Wrote x y z accel files");
+        Serial.println("Accel: Wrote x y z accel files");
+      } else {
+        mode = 2;
       }
       // Median filters
       do_accel_median_filter(sysData.accelData.xRaw, sysData.accelData.yRaw, sysData.accelData.zRaw);
@@ -268,26 +274,26 @@ static bool is_accel_speech_detected (void) {
 }
 
 void accel_thread (void) {
-  bool fileClosed = false;
+  timerStart = millis();
   while(1) {
-    static int64_t x = 0;
     sysStatus.isSpeechDetected = is_accel_speech_detected();
     if (sysStatus.isSpeechDetected) {
       Serial.println("Speech detected!!!!");
     }
-    threads.yield();
-    if (millis() - x > 2000) {
-      Serial.println("ACCEL: 2s passed.");
-      x += 2000;
-    }
-    if (sysData.uptimeSeconds >= 32 && !fileClosed) {
-      Serial.println("closed x files");
-      sysData.files.faccelx.close();
-      Serial.println("closed y files");
-      sysData.files.faccely.close();
-      Serial.println("closed z files");
-      sysData.files.faccelz.close();
-      fileClosed = true;
+    // threads.yield(); // This pauses the thread for way too long
+    if (WRITE_TO_FILE && mode == 2) {
+      if (sysData.files.faccelx) {
+        Serial.println("closed x files");
+        sysData.files.faccelx.close();
+      }
+      if (sysData.files.faccely) {
+        Serial.println("closed y files");
+        sysData.files.faccely.close();
+      }
+      if (sysData.files.faccelz) {
+        Serial.println("closed z files");
+        sysData.files.faccelz.close();
+      }
     }
   }
 

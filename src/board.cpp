@@ -102,6 +102,45 @@ void samms_open_file_rw (void) {
     Serial.println("File Open Z");
   }
 
+  if (SD.exists("MICLEFT.RAW")) {
+    SD.remove("MICLEFT.RAW");
+  }
+  sysData.files.fmicleftraw = SD.open("MICLEFT.RAW", FILE_WRITE);
+  if (sysData.files.fmicleftraw) {
+    Serial.println("File Open MICLEFT.RAW");
+  }
+
+  if (SD.exists("MICRIGHT.RAW")) {
+    SD.remove("MICRIGHT.RAW");
+  }
+  sysData.files.fmicrightraw = SD.open("MICRIGHT.RAW", FILE_WRITE);
+  if (sysData.files.fmicrightraw) {
+    Serial.println("File Open MICRIGHT.RAW");
+  }
+
+  if (SD.exists("MICSUM.RAW")) {
+    SD.remove("MICSUM.RAW");
+  }
+  sysData.files.fmicraw = SD.open("MICSUM.RAW", FILE_WRITE);
+  if (sysData.files.fmicraw) {
+    Serial.println("File Open MICSUM.RAW");
+  }
+
+  if (SD.exists("NLMS_RECORD.RAW")) {
+    SD.remove("NLMS_RECORD.RAW");
+  }
+  sysData.files.fnlms = SD.open("NLMS_RECORD.RAW", FILE_WRITE);
+  if (sysData.files.fnlms) {
+    Serial.println("File Open NLMS_RECORD.RAW");
+  }
+
+  if (SD.exists("FFT_RECORD.RAW")) {
+    SD.remove("FFT_RECORD.RAW");
+  }
+  sysData.files.ffft = SD.open("FFT_RECORD.RAW", FILE_WRITE);
+  if (sysData.files.ffft) {
+    Serial.println("File Open FFT_RECORD.RAW");
+  }
 }
 
 bool samms_toggle_buzz (bool turnOn) {

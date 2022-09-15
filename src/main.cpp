@@ -35,14 +35,17 @@ void setup() {
       delay(5000); // Check every 5 seconds.
   }
 
-  samms_open_file_rw();
+  // Change #define WRITE_TO_FILE to false if you don't want
+  // any of the threads to write their data to a file
+  if (WRITE_TO_FILE)
+    samms_open_file_rw();
 
   Serial.println("SAMMS Setup succeeded. Starting mic sampling...");
   sysConfig.mic.queue1.begin();
   sysConfig.mic.queue2.begin();
   delay(5000);
   // Thread function, thread arguments, stack size in bytes
-  threads.addThread(accel_thread, 0, 8192);
+ // threads.addThread(accel_thread, 0, 8192);
   threads.addThread(mic_filter_thread, 0, 8192);
   Serial.println("Starting accel sampling...");
 }
@@ -53,7 +56,7 @@ void loop() {
   if (millis() - x > 2000) {
     x += 2000;
     sysData.uptimeSeconds = millis() / 1000.000;
-    Serial.print("MAIN: 2s passed: ");
+    Serial.print("System Uptime: ");
     Serial.println(sysData.uptimeSeconds);
   }
 }

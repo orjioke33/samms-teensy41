@@ -23,6 +23,8 @@
 #define BUFFER_SIZE_MIC             512
 #define DELAYOFFSET                 64
 
+#define WRITE_TO_FILE               true
+
 // Spl file and limits
 typedef struct {
     char    fileName[32];
@@ -95,6 +97,8 @@ typedef struct {
   File faccelx;
   File faccely;
   File faccelz;
+  File fmicleftraw;
+  File fmicrightraw;
   File fmicraw;
   File fnlms;
   File ffft;
