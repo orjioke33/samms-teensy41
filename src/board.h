@@ -11,7 +11,12 @@
 #define TEENSY_LED_PIN              13
 #define TEENSY_MOTOR_DRIVER_VCC     37
 #define TEENSY_MOTOR_DRIVER_PH      38
-#define TEENSY_MOTOR_DRIVER_EN      29         
+#define TEENSY_MOTOR_DRIVER_EN      29 
+#define TEENSY_MCLK2                33
+#define TEENSY_BCLK1                21
+#define TEENSY_LRCLK1               20
+#define TEENSY_BCLK2                4
+#define TEENSY_LRCLK2               3        
 
 // ERRORS
 #define ERR_SAMMS_OK                 0

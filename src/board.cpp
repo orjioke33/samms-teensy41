@@ -62,6 +62,32 @@ int8_t samms_setup(void) {
     digitalWrite(TEENSY_MOTOR_DRIVER_VCC, HIGH);
     digitalWrite(TEENSY_MOTOR_DRIVER_PH, HIGH);
 
+    // Check I2S
+    /*  OLD HEADSET
+        TEENSY_BCLK1: 1
+        TEENSY_LRCLK1: 1
+        TEENSY_BCLK2: 0
+        TEENSY_LRCLK2: 1
+        TEENSY_MCLK2: 0
+
+        NEW HEADSET
+        TEENSY_BCLK1: 1
+        TEENSY_LRCLK1: 1
+        TEENSY_BCLK2: 0
+        TEENSY_LRCLK2: 1
+        TEENSY_MCLK2: 0
+    */
+    pinMode(TEENSY_MCLK2, INPUT); // 0 on new headset and old headset
+    pinMode(TEENSY_BCLK1, INPUT);
+    pinMode(TEENSY_LRCLK1, INPUT);
+    pinMode(TEENSY_BCLK2, INPUT);
+    pinMode(TEENSY_LRCLK2, INPUT);
+    Serial.print("TEENSY_BCLK1: "); Serial.println(digitalRead(TEENSY_BCLK1));
+    Serial.print("TEENSY_LRCLK1: "); Serial.println(digitalRead(TEENSY_LRCLK1));
+    Serial.print("TEENSY_BCLK2: "); Serial.println(digitalRead(TEENSY_BCLK2));
+    Serial.print("TEENSY_LRCLK2: "); Serial.println(digitalRead(TEENSY_LRCLK2));
+    Serial.print("TEENSY_MCLK2: "); Serial.println(digitalRead(TEENSY_MCLK2));
+
     // Get spl value from the SD card
     if ((err = read_spl_limits_from_file()) != ERR_SAMMS_OK) {
         Serial.print("Could not read "); Serial.print(sysConfig.splUserConfig.fileName);
@@ -104,12 +130,12 @@ void samms_open_file_rw (void) {
     Serial.println("File Open Z");
   }
 
-  if (SD.exists("MICRAWNEW_oldheadset.RAW")) {
-    SD.remove("MICRAWNEW_oldheadset.RAW");
+  if (SD.exists("MICRAWNEW_newheadset.RAW")) {
+    SD.remove("MICRAWNEW_newheadset.RAW");
   }
-  sysData.files.fmicraw = SD.open("MICRAWNEW_oldheadset.RAW", FILE_WRITE);
+  sysData.files.fmicraw = SD.open("MICRAWNEW_newheadset.RAW", FILE_WRITE);
   if (sysData.files.fmicraw) {
-    Serial.println("File Open MICRAWNEW_oldheadset");
+    Serial.println("File Open MICRAWNEW_newheadset");
   }
 
 }

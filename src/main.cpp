@@ -15,7 +15,7 @@
 #include "nlms.h"
 #include "arm_math.h"
 #include "sqrt_integer.h"
-
+                         // Source, source channel (depends on if L or R clock is enabled), dst, dst channel
 AudioConnection          patchCord1(sysConfig.mic.i2sL, 1, sysConfig.mic.queue1, 0); // Left Channel
 AudioConnection          patchCord2(sysConfig.mic.i2sR, 0, sysConfig.mic.queue2, 0); // Right Channel
 
@@ -35,7 +35,7 @@ void setup() {
       delay(5000); // Check every 5 seconds.
   }
 
-  samms_open_file_rw();
+  // samms_open_file_rw();
 
   Serial.println("SAMMS Setup succeeded. Starting mic sampling...");
   sysConfig.mic.queue1.begin();
