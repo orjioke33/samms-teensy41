@@ -77,16 +77,16 @@ int8_t samms_setup(void) {
         TEENSY_LRCLK2: 1
         TEENSY_MCLK2: 0
     */
-    pinMode(TEENSY_MCLK2, INPUT); // 0 on new headset and old headset
-    pinMode(TEENSY_BCLK1, INPUT);
-    pinMode(TEENSY_LRCLK1, INPUT);
-    pinMode(TEENSY_BCLK2, INPUT);
-    pinMode(TEENSY_LRCLK2, INPUT);
-    Serial.print("TEENSY_BCLK1: "); Serial.println(digitalRead(TEENSY_BCLK1));
-    Serial.print("TEENSY_LRCLK1: "); Serial.println(digitalRead(TEENSY_LRCLK1));
-    Serial.print("TEENSY_BCLK2: "); Serial.println(digitalRead(TEENSY_BCLK2));
-    Serial.print("TEENSY_LRCLK2: "); Serial.println(digitalRead(TEENSY_LRCLK2));
-    Serial.print("TEENSY_MCLK2: "); Serial.println(digitalRead(TEENSY_MCLK2));
+    // pinMode(TEENSY_MCLK2, INPUT); // 0 on new headset and old headset
+    // pinMode(TEENSY_BCLK1, INPUT);
+    // pinMode(TEENSY_LRCLK1, INPUT);
+    // pinMode(TEENSY_BCLK2, INPUT);
+    // pinMode(TEENSY_LRCLK2, INPUT);
+    // Serial.print("TEENSY_BCLK1: "); Serial.println(digitalRead(TEENSY_BCLK1));
+    // Serial.print("TEENSY_LRCLK1: "); Serial.println(digitalRead(TEENSY_LRCLK1));
+    // Serial.print("TEENSY_BCLK2: "); Serial.println(digitalRead(TEENSY_BCLK2));
+    // Serial.print("TEENSY_LRCLK2: "); Serial.println(digitalRead(TEENSY_LRCLK2));
+    // Serial.print("TEENSY_MCLK2: "); Serial.println(digitalRead(TEENSY_MCLK2));
 
     // Get spl value from the SD card
     if ((err = read_spl_limits_from_file()) != ERR_SAMMS_OK) {
