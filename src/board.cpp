@@ -106,36 +106,44 @@ int8_t samms_setup(void) {
 
 void samms_open_file_rw (void) {
 
- if (SD.exists("rawaccelx.txt")) {
-    SD.remove("rawaccelx.txt");
-  }
-  sysData.files.faccelx = SD.open("rawaccelx.txt", FILE_WRITE);
-  if (sysData.files.faccelx) {
-    Serial.println("File Open X");
-  }
+//  if (SD.exists("rawaccelx.txt")) {
+//     SD.remove("rawaccelx.txt");
+//   }
+//   sysData.files.faccelx = SD.open("rawaccelx.txt", FILE_WRITE);
+//   if (sysData.files.faccelx) {
+//     Serial.println("File Open X");
+//   }
 
-  if (SD.exists("rawaccely.txt")) {
-    SD.remove("rawaccely.txt");
-  }
-  sysData.files.faccely = SD.open("rawaccely.txt", FILE_WRITE);
-  if (sysData.files.faccely) {
-    Serial.println("File Open Y");
-  }
+//   if (SD.exists("rawaccely.txt")) {
+//     SD.remove("rawaccely.txt");
+//   }
+//   sysData.files.faccely = SD.open("rawaccely.txt", FILE_WRITE);
+//   if (sysData.files.faccely) {
+//     Serial.println("File Open Y");
+//   }
 
-  if (SD.exists("rawaccelz.txt")) {
-    SD.remove("rawaccelz.txt");
-  }
-  sysData.files.faccelz = SD.open("rawaccelz.txt", FILE_WRITE);
-  if (sysData.files.faccelz) {
-    Serial.println("File Open Z");
-  }
+//   if (SD.exists("rawaccelz.txt")) {
+//     SD.remove("rawaccelz.txt");
+//   }
+//   sysData.files.faccelz = SD.open("rawaccelz.txt", FILE_WRITE);
+//   if (sysData.files.faccelz) {
+//     Serial.println("File Open Z");
+//   }
 
-  if (SD.exists("MICRAWNEW_newheadset.RAW")) {
-    SD.remove("MICRAWNEW_newheadset.RAW");
+//   if (SD.exists("MICRAWNEW_newheadset.RAW")) {
+//     SD.remove("MICRAWNEW_newheadset.RAW");
+//   }
+//   sysData.files.fmicraw = SD.open("MICRAWNEW_newheadset.RAW", FILE_WRITE);
+//   if (sysData.files.fmicraw) {
+//     Serial.println("File Open MICRAWNEW_newheadset");
+//   }
+
+  if (SD.exists("MICNLMSOUT.RAW")) {
+    SD.remove("MICNLMSOUT.RAW");
   }
-  sysData.files.fmicraw = SD.open("MICRAWNEW_newheadset.RAW", FILE_WRITE);
-  if (sysData.files.fmicraw) {
-    Serial.println("File Open MICRAWNEW_newheadset");
+  sysData.files.fnlms = SD.open("MICNLMSOUT.RAW", FILE_WRITE);
+  if (sysData.files.fnlms) {
+    Serial.println("File Open MICNLMSOUT");
   }
 
 }
