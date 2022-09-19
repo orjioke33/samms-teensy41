@@ -152,8 +152,9 @@ void write_nlms_out_to_sd_card (float timeRecording) {
 }
 
 void check_dB (void) {
+  static float totalAvg = 0, speakingAvg = 0;
   // If the current spl is within the no talk zone
-  if (!sysStatus.isMotorOn && sysData.dBStats.curr >= sysConfig.splUserConfig.splLowerdBA && sysConfig.splUserConfig.splUpperdBA > sysData.dBStats.curr) {
+  if (!sysStatus.isMotorOn && sysData.dBStats.curr >= sysConfig.splUserConfig.splLowerdBA) {
     sysData.dBStats.currSpeaker = sysData.dBStats.curr;
     sysData.dBStats.sumSpeaker += sysData.dBStats.currSpeaker;
     sysData.dBStats.countSpeaker++;
@@ -163,6 +164,8 @@ void check_dB (void) {
       if (dBAvgSpeaker >= sysConfig.splUserConfig.splLowerdBA && dBAvgSpeaker < sysConfig.splUserConfig.splUpperdBA) {
         samms_toggle_buzz(true);
       }
+      sprintf(sysData.dBAvgBuffer, "Speaking Average: %0.3f\n", dBAvgSpeaker);
+      sysData.files.fspeakavg.write(sysData.dBAvgBuffer, strlen(sysData.dBAvgBuffer));
       sysData.dBStats.countSpeaker = 0;
       sysData.dBStats.sumSpeaker = 0;
     }
@@ -223,8 +226,14 @@ void mic_filter_thread (void) {
 
   while (1) {
     if (Serial.available()) {
-      stopTest = Serial.parseInt();
-      Serial.println("Test stopped!");
+      if ((stopTest = Serial.parseInt()) == 2) {
+        if (sysStatus.runTest)
+          Serial.println("Test stopped!");
+        if (sysData.files.fspeakavg) {
+          sysData.files.fspeakavg.close();
+          Serial.println("Closed speakavg.txt");
+        }
+      }
     }
     if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2) {
       double micNoise[BUFFER_SIZE_MIC];

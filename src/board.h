@@ -30,7 +30,7 @@
 #define DELAYOFFSET                 0
 
 // TESTS
-#define RUN_AVERAGE_DB_TEST         true
+#define RUN_AVERAGE_DB_TEST         false
 
 // Spl file and limits
 typedef struct {
@@ -111,6 +111,7 @@ typedef struct {
   File fmicraw;
   File fnlms;
   File ffft;
+  File fspeakavg;
 } file_handler_data_t;
 
 // System data
@@ -119,6 +120,7 @@ typedef struct {
     mic_energy_calculations_t   micEnergyData;
     float32_t                   uptimeSeconds;
     uint32_t                    buzzOnTimeStamp_ms;
+    char                        dBAvgBuffer[64];
     accel_data_t                accelData;
     file_handler_data_t         files;
 } samms_sys_data_t;

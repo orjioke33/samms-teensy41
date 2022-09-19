@@ -144,12 +144,21 @@ void samms_open_file_rw (void) {
 //     Serial.println("File Open MICRAWNEW_newheadset");
 //   }
 
-  if (SD.exists("MICNLMSOUT.RAW")) {
-    SD.remove("MICNLMSOUT.RAW");
+//   if (SD.exists("MICNLMSOUT.RAW")) {
+//     SD.remove("MICNLMSOUT.RAW");
+//   }
+//   sysData.files.fnlms = SD.open("MICNLMSOUT.RAW", FILE_WRITE);
+//   if (sysData.files.fnlms) {
+//     Serial.println("File Open MICNLMSOUT");
+//   }
+
+  if (SD.exists("speakavg.txt")) {
+    SD.remove("speakavg.txt");
   }
-  sysData.files.fnlms = SD.open("MICNLMSOUT.RAW", FILE_WRITE);
-  if (sysData.files.fnlms) {
-    Serial.println("File Open MICNLMSOUT");
+
+  sysData.files.fspeakavg = SD.open("speakavg.txt", FILE_WRITE);
+  if (sysData.files.fspeakavg) {
+    Serial.println("File open speakavg.txt");
   }
 
 }

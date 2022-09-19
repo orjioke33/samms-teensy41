@@ -35,7 +35,7 @@ void setup() {
       delay(5000); // Check every 5 seconds.
   }
 
-  // samms_open_file_rw();
+  samms_open_file_rw();
 
   Serial.println("SAMMS Setup succeeded. Starting mic sampling...");
   sysConfig.mic.queue1.begin();
@@ -44,7 +44,7 @@ void setup() {
   // Thread function, thread arguments, stack size in bytes
   //threads.addThread(accel_thread, 0, 8192);
   threads.addThread(mic_filter_thread, 0, 8192);
-  Serial.println("Starting accel sampling...");
+  // Serial.println("Starting accel sampling...");
 }
 
 
