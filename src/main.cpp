@@ -50,10 +50,10 @@ void setup() {
 
 void loop() {
   static int64_t x = 0;
-  if (millis() - x > 2000) {
-    x += 2000;
+  if (millis() - x > 20000) {
+    x += 20000;
     sysData.uptimeSeconds = millis() / 1000.000;
-    Serial.print("MAIN: 2s passed: ");
+    Serial.print("MAIN - Uptime: ");
     Serial.println(sysData.uptimeSeconds);
   }
 }

@@ -34,6 +34,10 @@ samms_sys_data_t sysData = {
         .sum = 0,
         .avg = 0,
         .count = 0,
+        .currSpeaker = 0,
+        .sumSpeaker = 0,
+        .avgSpeaker = 0,
+        .countSpeaker = 0,
     },
     .micEnergyData = {
         .magnitude = 0,
@@ -41,6 +45,7 @@ samms_sys_data_t sysData = {
         .noiseConstant = 0.5,
     },
     .uptimeSeconds = 0,
+    .buzzOnTimeStamp_ms = 0,
 };
 
 // sysStatus
@@ -148,16 +153,26 @@ void samms_open_file_rw (void) {
 
 }
 
+bool is_buzz_timer_expired() {
+    if (sysData.buzzOnTimeStamp_ms != 0 && millis() - sysData.buzzOnTimeStamp_ms >= 500) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 bool samms_toggle_buzz (bool turnOn) {
     if (turnOn) {
         if (!sysStatus.isMotorOn) {
             Serial.println("BUZZING!");
+            sysData.buzzOnTimeStamp_ms = millis();
             analogWrite(TEENSY_MOTOR_DRIVER_EN, 0);
             analogWrite(TEENSY_MOTOR_DRIVER_EN, 70);
             sysStatus.isMotorOn = true;
         }
     } else {
         if (sysStatus.isMotorOn) {
+            Serial.println("Buzz Off");
             analogWrite(TEENSY_MOTOR_DRIVER_EN, 0);
             sysStatus.isMotorOn = false;
         }

@@ -80,6 +80,10 @@ typedef struct {
   float sum;
   float avg;
   int   count;
+  float currSpeaker;
+  float sumSpeaker;
+  float avgSpeaker;
+  int   countSpeaker;
 } decibel_stats_t;
 
 typedef struct {
@@ -111,6 +115,7 @@ typedef struct {
     decibel_stats_t             dBStats;
     mic_energy_calculations_t   micEnergyData;
     float32_t                   uptimeSeconds;
+    uint32_t                    buzzOnTimeStamp_ms;
     accel_data_t                accelData;
     file_handler_data_t         files;
 } samms_sys_data_t;
@@ -128,5 +133,6 @@ extern samms_sys_status_t   sysStatus;
 int8_t samms_setup(void);
 bool samms_toggle_buzz(bool turnOn);
 void samms_open_file_rw(void);
+bool is_buzz_timer_expired(void);
 
 #endif
