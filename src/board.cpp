@@ -52,6 +52,7 @@ samms_sys_data_t sysData = {
 samms_sys_status_t sysStatus = {
     .isMotorOn = false,
     .isSpeechDetected = false,
+    .runTest = RUN_AVERAGE_DB_TEST,
 };
 
 // Setup the SD card, accelerometer, haptic driver & motor

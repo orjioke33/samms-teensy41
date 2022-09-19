@@ -151,6 +151,45 @@ void write_nlms_out_to_sd_card (float timeRecording) {
     }
 }
 
+void check_dB (void) {
+  // If the current spl is within the no talk zone
+  if (!sysStatus.isMotorOn && sysData.dBStats.curr >= sysConfig.splUserConfig.splLowerdBA && sysConfig.splUserConfig.splUpperdBA > sysData.dBStats.curr) {
+    sysData.dBStats.currSpeaker = sysData.dBStats.curr;
+    sysData.dBStats.sumSpeaker += sysData.dBStats.currSpeaker;
+    sysData.dBStats.countSpeaker++;
+    if (sysData.dBStats.countSpeaker >= 384) {
+      float dBAvgSpeaker = sysData.dBStats.sumSpeaker / sysData.dBStats.countSpeaker;
+      Serial.print("SPEAKER dB: "); Serial.println(dBAvgSpeaker, 2);
+      if (dBAvgSpeaker >= sysConfig.splUserConfig.splLowerdBA && dBAvgSpeaker < sysConfig.splUserConfig.splUpperdBA) {
+        samms_toggle_buzz(true);
+      }
+      sysData.dBStats.countSpeaker = 0;
+      sysData.dBStats.sumSpeaker = 0;
+    }
+  }
+
+  // Turn off if it's been >= 0.5 s
+  if (is_buzz_timer_expired() && sysStatus.isMotorOn) {
+    samms_toggle_buzz(false);
+  }
+
+  // Check for buzz every 96 dB samples
+  if (sysData.dBStats.count >= 128) {
+    sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
+    Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
+    sysData.dBStats.count = 0;
+    sysData.dBStats.sum = 0;
+  }
+}
+
+void run_average_dB_test (void) {
+  if (!sysStatus.runTest) {
+    sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
+    Serial.println("Average dB: "); Serial.println(sysData.dBStats.avg);
+    Serial.println("Test complete! Save dB value and restart program.");
+  }
+}
+
 void mic_filter_thread (void) {
   double yL_old = 0;
   double yR_old = 0;
@@ -159,6 +198,7 @@ void mic_filter_thread (void) {
   int8_t quietCounter = 0;
   float32_t v[512] = {0};
   bool closed = false;
+  int stopTest = 0;
 
   //bins [7 42] should have weights 1 for BP filtering
   for(int i=0; i<512; i++) {
@@ -171,7 +211,21 @@ void mic_filter_thread (void) {
     }
   }
 
+  if (sysStatus.runTest) {
+    Serial.println("Starting average dB test...");
+    delay(2000);
+    Serial.println("Press '1' to BEGIN to the test and press '2' to END the test...");
+    while(!Serial.available()) {}
+    if (Serial.parseInt() == 1) {
+      Serial.println("Test has begun...");
+    }
+  }
+
   while (1) {
+    if (Serial.available()) {
+      stopTest = Serial.parseInt();
+      Serial.println("Test stopped!");
+    }
     if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2) {
       double micNoise[BUFFER_SIZE_MIC];
 
@@ -247,58 +301,14 @@ void mic_filter_thread (void) {
       sysData.dBStats.sum += sysData.dBStats.curr;
       sysData.dBStats.count++;
 
-      // If the current spl is within the no talk zone
-      if (!sysStatus.isMotorOn && sysData.dBStats.curr >= sysConfig.splUserConfig.splLowerdBA && sysConfig.splUserConfig.splUpperdBA > sysData.dBStats.curr) {
-        sysData.dBStats.currSpeaker = sysData.dBStats.curr;
-        sysData.dBStats.sumSpeaker += sysData.dBStats.currSpeaker;
-        sysData.dBStats.countSpeaker++;
-        if (sysData.dBStats.countSpeaker >= 384) {
-          float dBAvgSpeaker = sysData.dBStats.sumSpeaker / sysData.dBStats.countSpeaker;
-          Serial.print("SPEAKER dB: "); Serial.println(dBAvgSpeaker, 2);
-          if (dBAvgSpeaker >= sysConfig.splUserConfig.splLowerdBA && dBAvgSpeaker < sysConfig.splUserConfig.splUpperdBA) {
-            samms_toggle_buzz(true);
-          }
-          sysData.dBStats.countSpeaker = 0;
-          sysData.dBStats.sumSpeaker = 0;
+      if (!sysStatus.runTest) {
+        check_dB();
+      } else {
+        if(stopTest == 2) {
+          sysStatus.runTest = false;
+          run_average_dB_test();
+          while(1);
         }
-      }
-
-      // Turn off if it's been >= 0.5 s
-      if (is_buzz_timer_expired() && sysStatus.isMotorOn) {
-        samms_toggle_buzz(false);
-      }
-
-      // Check for buzz every 96 dB samples
-      if (sysData.dBStats.count >= 128) {
-        sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
-        Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
-        sysData.dBStats.count = 0;
-        sysData.dBStats.sum = 0;
-      //nlmsOut
-      //micDiff second half
-        // if(sysData.micEnergyData.diffMagSq > (sysData.micEnergyData.noiseConstant * sysData.micEnergyData.magnitude)) {
-        //   if (sysData.dBStats.avg > sysConfig.splUserConfig.splLowerdBA && sysData.dBStats.avg < sysConfig.splUserConfig.splUpperdBA && !sysStatus.isMotorOn) {
-        //       // Serial.println(sysData.dBStats.avg,2); // f[23] = 1kHz, f[82] = 3.5kHz, f[252] = 12kHz
-        //       //buzzOn(); delay(250); buzzOff();
-        //   }
-        // }
-
-        // if (sysData.dBStats.avg < sysConfig.splUserConfig.splLowerdBA) {
-        //   quietCounter++;
-        //   if (quietCounter >= 6) {
-        //     // Around 3 seconds of the wearer speaking softly. Let's buzz.
-        //     // samms_toggle_buzz(true);
-        //     quietCounter = 0;
-        //   } else {
-        //     // samms_toggle_buzz(false);
-        //   }
-        // } else {
-        //   quietCounter = 0; // reset
-        // }
-        // Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
-        // sysData.dBStats.sum = 0;
-        // sysData.dBStats.count = 0;
-        // sysData.dBStats.avg = 0;
       }
     }
   }

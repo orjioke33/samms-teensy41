@@ -29,6 +29,9 @@
 //#define DELAYOFFSET                 64
 #define DELAYOFFSET                 0
 
+// TESTS
+#define RUN_AVERAGE_DB_TEST         true
+
 // Spl file and limits
 typedef struct {
     char    fileName[32];
@@ -124,6 +127,7 @@ typedef struct {
 typedef struct {
     bool isMotorOn;
     bool isSpeechDetected;
+    bool runTest;
 } samms_sys_status_t;
 
 extern samms_sys_config_t   sysConfig;
