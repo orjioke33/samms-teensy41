@@ -164,7 +164,7 @@ void check_dB (void) {
       if (dBAvgSpeaker >= sysConfig.splUserConfig.splLowerdBA && dBAvgSpeaker < sysConfig.splUserConfig.splUpperdBA) {
         samms_toggle_buzz(true);
       }
-      sprintf(sysData.dBAvgBuffer, "Speaking Average: %0.3f\n", dBAvgSpeaker);
+      sprintf(sysData.dBAvgBuffer, "Time from boot (ms): %0.2f, Speaking Average: %0.3f\n", millis() / 1000.000, dBAvgSpeaker);
       sysData.files.fspeakavg.write(sysData.dBAvgBuffer, strlen(sysData.dBAvgBuffer));
       sysData.dBStats.countSpeaker = 0;
       sysData.dBStats.sumSpeaker = 0;
