@@ -164,7 +164,7 @@ void check_dB (void) {
       if (dBAvgSpeaker >= sysConfig.splUserConfig.splLowerdBA && dBAvgSpeaker < sysConfig.splUserConfig.splUpperdBA) {
         samms_toggle_buzz(true);
       }
-      sprintf(sysData.dBAvgBuffer, "Time from boot (ms): %0.2f, Speaking Average: %0.3f\n", millis() / 1000.000, dBAvgSpeaker);
+      sprintf(sysData.dBAvgBuffer, "Time (s): %0.2f, Avg (dB): %0.3f\n", millis() / 1000.000, dBAvgSpeaker);
       sysData.files.fspeakavg.write(sysData.dBAvgBuffer, strlen(sysData.dBAvgBuffer));
       sysData.dBStats.countSpeaker = 0;
       sysData.dBStats.sumSpeaker = 0;
@@ -176,7 +176,7 @@ void check_dB (void) {
     samms_toggle_buzz(false);
   }
 
-  // Check for buzz every 96 dB samples
+  // Check for buzz every 128 dB samples
   if (sysData.dBStats.count >= 128) {
     sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
     Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
@@ -202,6 +202,9 @@ void mic_filter_thread (void) {
   float32_t v[512] = {0};
   bool closed = false;
   int stopTest = 0;
+  uint32_t micStart_ms = 0;
+  uint32_t elapsedTime_ms = 0;
+  bool stopTimer = false;
 
   //bins [7 42] should have weights 1 for BP filtering
   for(int i=0; i<512; i++) {
@@ -224,7 +227,22 @@ void mic_filter_thread (void) {
     }
   }
 
+  micStart_ms = millis();
+
   while (1) {
+    // Stop clinical trial after 30 minutes (default)
+    elapsedTime_ms = millis() - micStart_ms;
+    if (!sysStatus.runTest && !stopTimer && elapsedTime_ms / 1000.000 >= DEFAULT_CLINICAL_TRIAL_LENGTH_SECONDS) {
+      Serial.print("Test stopped. "); Serial.print(DEFAULT_CLINICAL_TRIAL_LENGTH_SECONDS);
+      Serial.println(" seconds elapsed.");
+      if (sysData.files.fspeakavg) {
+        sysData.files.fspeakavg.close();
+        Serial.println("Closed speakavg.txt");
+      }
+      stopTimer = true;
+    }
+
+    // Can also press '2' on the keyboard to stop tests
     if (Serial.available()) {
       if ((stopTest = Serial.parseInt()) == 2) {
         if (sysStatus.runTest)
@@ -235,6 +253,7 @@ void mic_filter_thread (void) {
         }
       }
     }
+
     if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2) {
       double micNoise[BUFFER_SIZE_MIC];
 
@@ -304,12 +323,12 @@ void mic_filter_thread (void) {
         sysData.micEnergyData.diffMagSq = sysData.micEnergyData.diffMagSq + sq(abs(sysConfig.micFilter.micDiff[i+BUFFER_SIZE_MIC]));
       }
 
-      //get spl and buzz?
-
+      // Calculate avergae dB
       sysData.dBStats.curr = log10f(sysData.micEnergyData.magnitude) * 10  + 80.05;
       sysData.dBStats.sum += sysData.dBStats.curr;
       sysData.dBStats.count++;
 
+      // Print and save average dB
       if (!sysStatus.runTest) {
         check_dB();
       } else {

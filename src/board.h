@@ -26,11 +26,11 @@
 
 #define DEFAULT_ACCEL_BUFFER_SIZE   512
 #define BUFFER_SIZE_MIC             128
-//#define DELAYOFFSET                 64
-#define DELAYOFFSET                 0
+#define DELAYOFFSET                 64
 
 // TESTS
 #define RUN_AVERAGE_DB_TEST         false
+#define DEFAULT_CLINICAL_TRIAL_LENGTH_SECONDS   20 // 30 minutes
 
 // Spl file and limits
 typedef struct {
