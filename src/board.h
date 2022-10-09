@@ -30,7 +30,7 @@
 
 // TESTS
 #define RUN_AVERAGE_DB_TEST         false
-#define DEFAULT_CLINICAL_TRIAL_LENGTH_SECONDS   20 // 30 minutes
+#define DEFAULT_CLINICAL_TRIAL_LENGTH_SECONDS   1800 // 30 minutes
 
 // Spl file and limits
 typedef struct {
