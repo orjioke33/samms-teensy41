@@ -152,36 +152,40 @@ void write_nlms_out_to_sd_card (float timeRecording) {
 }
 
 void check_dB (void) {
-  static float totalAvg = 0, speakingAvg = 0;
-  // If the current spl is within the no talk zone
-  if (!sysStatus.isMotorOn && sysData.dBStats.curr >= sysConfig.splUserConfig.splLowerdBA) {
-    sysData.dBStats.currSpeaker = sysData.dBStats.curr;
-    sysData.dBStats.sumSpeaker += sysData.dBStats.currSpeaker;
-    sysData.dBStats.countSpeaker++;
-    if (sysData.dBStats.countSpeaker >= 384) {
-      float dBAvgSpeaker = sysData.dBStats.sumSpeaker / sysData.dBStats.countSpeaker;
-      Serial.print("SPEAKER dB: "); Serial.println(dBAvgSpeaker, 2);
-      if (dBAvgSpeaker >= sysConfig.splUserConfig.splLowerdBA && dBAvgSpeaker < sysConfig.splUserConfig.splUpperdBA) {
-        samms_toggle_buzz(true);
-      }
-      sprintf(sysData.dBAvgBuffer, "Time (s): %0.2f, Avg (dB): %0.3f\n", millis() / 1000.000, dBAvgSpeaker);
-      sysData.files.fspeakavg.write(sysData.dBAvgBuffer, strlen(sysData.dBAvgBuffer));
-      sysData.dBStats.countSpeaker = 0;
-      sysData.dBStats.sumSpeaker = 0;
+  static int noBuzz = 0;
+  static int redZone = 0;
+  static int resetCnt = 0;
+
+  if (noBuzz) {
+    noBuzz--;
+    return;
+  }
+
+  // If average dB is noise, then increment reset counter.
+  // if this happens long enough, then restart the counter to buzz
+  if (sysData.dBStats.avg < sysConfig.splUserConfig.splLowerdBA) {
+    resetCnt++;
+    Serial.print("resetCnt: "); Serial.println(resetCnt);
+    if (resetCnt > 20) {
+      redZone = 0;
+      resetCnt = 0;
     }
-  }
-
-  // Turn off if it's been >= 0.5 s
-  if (is_buzz_timer_expired() && sysStatus.isMotorOn) {
-    samms_toggle_buzz(false);
-  }
-
-  // Check for buzz every 128 dB samples
-  if (sysData.dBStats.count >= 128) {
-    sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
-    Serial.print("dB: "); Serial.println(sysData.dBStats.avg);
-    sysData.dBStats.count = 0;
-    sysData.dBStats.sum = 0;
+  // If we hit the decibel threshold, then reset counting for a buzz
+  } else if (sysData.dBStats.avg > sysConfig.splUserConfig.splUpperdBA) {
+      redZone = 0;
+      resetCnt = 0;
+  // If we're in the no talk zone, start increment the red zone. Then buzz!
+  } else {
+    redZone++;
+    resetCnt = 0;
+    Serial.print("redZone: "); Serial.println(redZone);
+    if (redZone > 10) {
+      samms_toggle_buzz(true);
+      Serial.println("BUZZING!!!");
+      redZone = 0;
+      resetCnt = 0;
+      noBuzz = 50;
+    }
   }
 }
 
@@ -327,10 +331,22 @@ void mic_filter_thread (void) {
       sysData.dBStats.curr = log10f(sysData.micEnergyData.magnitude) * 10  + 80.05;
       sysData.dBStats.sum += sysData.dBStats.curr;
       sysData.dBStats.count++;
+      if(sysData.dBStats.count == 64) {
+        sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
+        Serial.print("avg dB: "); Serial.println(sysData.dBStats.avg, 2);
+        sysData.dBStats.sum = 0;
+        sysData.dBStats.count = 0;
+        check_dB();
+      }
+
+      // Turn off if it's been >= 0.5 s
+      if (is_buzz_timer_expired() && sysStatus.isMotorOn) {
+        samms_toggle_buzz(false);
+      }
 
       // Print and save average dB
       if (!sysStatus.runTest) {
-        check_dB();
+        //check_dB();
       } else {
         if(stopTest == 2) {
           sysStatus.runTest = false;
