@@ -331,7 +331,7 @@ void mic_filter_thread (void) {
       sysData.dBStats.curr = log10f(sysData.micEnergyData.magnitude) * 10  + 80.05;
       sysData.dBStats.sum += sysData.dBStats.curr;
       sysData.dBStats.count++;
-      if(sysData.dBStats.count == 64) {
+      if(sysData.dBStats.count == 64 && !sysStatus.runTest) {
         sysData.dBStats.avg = sysData.dBStats.sum / sysData.dBStats.count;
         Serial.print("avg dB: "); Serial.println(sysData.dBStats.avg, 2);
         sysData.dBStats.sum = 0;
