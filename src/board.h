@@ -29,7 +29,7 @@
 #define DELAYOFFSET                 64
 
 // TESTS
-#define RUN_AVERAGE_DB_TEST         false
+#define RUN_AVERAGE_DB_TEST         true
 #define DEFAULT_CLINICAL_TRIAL_LENGTH_SECONDS   1800 // 30 minutes
 
 // Spl file and limits
@@ -45,6 +45,7 @@ typedef struct {
     AudioInputI2S2           i2sR;           // right mic
     AudioRecordQueue         queue1;         // left mic raw buf
     AudioRecordQueue         queue2;         // right mic raw buf
+    AudioRecordQueue         queue3;         // right mic raw buf
 } mic_config_t;
 
 // Microphone buffers
@@ -56,6 +57,7 @@ typedef struct {
     double nlms_weights[100];
     short micLeftBuffer[BUFFER_SIZE_MIC+128];//for offset
     short micRightBuffer[BUFFER_SIZE_MIC+128];
+    short micRightBackBuffer[BUFFER_SIZE_MIC+128];
     double nlmsOut[BUFFER_SIZE_MIC];
     float32_t bp_weight[512];
 } mic_filter_config_t;

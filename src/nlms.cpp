@@ -112,12 +112,14 @@ void apply_window_to_fft_buffer(void *buffer, const void *window)
 
 void write_raw_mic_data_to_sd (float timeRecording) {
 
-    short fullBuffer[256] = {0};
+    //short fullBuffer[256] = {0};
+    short fullBuffer[384] = {0};
     static bool closed = false;
     int b = 0;
-    for (int i = 0; i < 256; i+=2) {
+    for (int i = 0; i < 384; i+=3) {
       fullBuffer[i] = sysConfig.micFilter.micLeftBuffer[b];
       fullBuffer[i+1] = sysConfig.micFilter.micRightBuffer[b];
+      fullBuffer[i+2] = sysConfig.micFilter.micRightBackBuffer[b];
       b++;
     }
 
@@ -258,7 +260,8 @@ void mic_filter_thread (void) {
       }
     }
 
-    if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2) {
+    //if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2) {
+      if (sysConfig.mic.queue1.available() >= 2 && sysConfig.mic.queue2.available() >= 2 && sysConfig.mic.queue3.available() >= 2) {
       double micNoise[BUFFER_SIZE_MIC];
 
       for (int i = 0; i < DELAYOFFSET; i++)
@@ -267,8 +270,10 @@ void mic_filter_thread (void) {
       // If >= 1024 bytes of mic data is available, save in a buffer
       memcpy(sysConfig.micFilter.micLeftBuffer+DELAYOFFSET, sysConfig.mic.queue1.readBuffer(), BUFFER_SIZE_MIC*2);
       memcpy(sysConfig.micFilter.micRightBuffer, sysConfig.mic.queue2.readBuffer(), BUFFER_SIZE_MIC*2);
+      memcpy(sysConfig.micFilter.micRightBackBuffer, sysConfig.mic.queue3.readBuffer(), BUFFER_SIZE_MIC*2);
       sysConfig.mic.queue1.freeBuffer();
       sysConfig.mic.queue2.freeBuffer();
+      sysConfig.mic.queue3.freeBuffer();
 
       // write_raw_mic_data_to_sd(40);
 

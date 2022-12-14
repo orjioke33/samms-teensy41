@@ -15,11 +15,13 @@
 #include "nlms.h"
 #include "arm_math.h"
 #include "sqrt_integer.h"
-                         // Source, source channel (depends on if L or R clock is enabled), dst, dst channel
-AudioConnection          patchCord1(sysConfig.mic.i2sL, 1, sysConfig.mic.queue1, 0); // Left Channel
-AudioConnection          patchCord2(sysConfig.mic.i2sR, 0, sysConfig.mic.queue2, 0); // Right Channel
+// Source, source channel (depends on if L or R clock is enabled), dst, dst channel
+AudioConnection patchCord1(sysConfig.mic.i2sL, 1, sysConfig.mic.queue1, 0); // Left Channel
+AudioConnection patchCord2(sysConfig.mic.i2sR, 0, sysConfig.mic.queue2, 0); // Right Channel - front
+AudioConnection patchCord3(sysConfig.mic.i2sR, 1, sysConfig.mic.queue3, 0); // Right Channel -back
 
-void setup() {
+void setup()
+{
   // record queue uses this memory
   // to buffer incoming audio
   AudioMemory(120);
@@ -31,8 +33,9 @@ void setup() {
   // and accelerometer
   delay(8000);
   Serial.println("Setting up SAMMS...");
-  while (samms_setup() != ERR_SAMMS_OK) {
-      delay(5000); // Check every 5 seconds.
+  while (samms_setup() != ERR_SAMMS_OK)
+  {
+    delay(5000); // Check every 5 seconds.
   }
 
   samms_open_file_rw();
@@ -40,6 +43,7 @@ void setup() {
   Serial.println("SAMMS Setup succeeded. Starting mic sampling...");
   sysConfig.mic.queue1.begin();
   sysConfig.mic.queue2.begin();
+  sysConfig.mic.queue3.begin();
   delay(5000);
   // Thread function, thread arguments, stack size in bytes
   //threads.addThread(accel_thread, 0, 8192);
@@ -47,10 +51,11 @@ void setup() {
   // Serial.println("Starting accel sampling...");
 }
 
-
-void loop() {
+void loop()
+{
   static int64_t x = 0;
-  if (millis() - x > 20000) {
+  if (millis() - x > 20000)
+  {
     x += 20000;
     sysData.uptimeSeconds = millis() / 1000.000;
     Serial.print("MAIN - Uptime: ");
